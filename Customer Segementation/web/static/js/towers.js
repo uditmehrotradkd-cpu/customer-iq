@@ -31,17 +31,14 @@ function labelTexture(title, value) {
 export function mountTowers(container, profiles, colorOf, onSelect) {
   const stage = createStage(container, {
     label: "3D skyline: one tower per segment, height shows share of revenue. Drag to rotate, tap a tower to open it.",
-    cameraPosition: [0, 5, 13.5],
-    target: [0, 2.1, 0],
+    cameraPosition: [0, 7.2, 14.5],
+    target: [0, 1.9, 0],
     shadows: true,
   });
   if (!stage) return () => {};
   const { scene, pivot, camera, el, state, onFrame } = stage;
-  // Towers stand in a row, so a full spin would hide them behind each other: sway gently instead.
-  state.spin = 0;
-  state.tiltLimit = 0.2;
-  let touched = false;
-  el.addEventListener("pointerdown", () => (touched = true));
+  state.spin = reducedMotion ? 0 : 0.0035;
+  state.tiltLimit = 0.25;
 
   scene.add(new THREE.HemisphereLight(0xdbeafe, 0x0f172a, 1.1));
   const sun = new THREE.DirectionalLight(0xffffff, 2.2);
@@ -91,19 +88,17 @@ export function mountTowers(container, profiles, colorOf, onSelect) {
     pivot.add(new THREE.Points(dustGeometry, new THREE.PointsMaterial({ size: 0.09, map: glow, color: 0x67e8f9, transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending })));
   }
   const towers = [];
-  // Largest revenue share first, left to right, with room between towers so labels never collide.
-  const ordered = [...profiles].sort((a, b) => b["Revenue_Share_%"] - a["Revenue_Share_%"]);
-  const widths = ordered.map((p) => 0.9 + (p["Customer_Share_%"] / 100) * 2.6);
-  const gap = 1.25;
-  const rowWidth = widths.reduce((s, w) => s + w, 0) + gap * (ordered.length - 1);
-  const scale = Math.min(1, 10 / rowWidth);
-  let cursor = -rowWidth / 2;
+  // Towers stand on a ring and the stage turns a full circle; alternating tall and short towers
+  // keeps neighbouring labels at different heights so they don't collide.
+  const byValue = [...profiles].sort((a, b) => b["Revenue_Share_%"] - a["Revenue_Share_%"]);
+  const ordered = byValue.map((_, i) => (i % 2 === 0 ? byValue[i / 2] : byValue[byValue.length - 1 - (i - 1) / 2]));
+  const n = ordered.length;
+  const radius = n > 1 ? 3.6 : 0;
   // Scale to the tallest tower so one dominant segment still fits in view.
   const maxShare = Math.max(...profiles.map((p) => p["Revenue_Share_%"]), 1);
   ordered.forEach((p, i) => {
-    const width = widths[i] * scale;
-    const x = (cursor + widths[i] / 2) * scale;
-    cursor += widths[i] + gap;
+    const angle = (i / n) * Math.PI * 2;
+    const width = Math.min(0.9 + (p["Customer_Share_%"] / 100) * 2.6, n > 1 ? radius * Math.sin(Math.PI / n) * 1.3 : 3);
     const height = 0.5 + (p["Revenue_Share_%"] / maxShare) * 5.2;
     const color = new THREE.Color(colorOf(p.Segment));
 
@@ -123,7 +118,7 @@ export function mountTowers(container, profiles, colorOf, onSelect) {
     const tower = new THREE.Mesh(geometry, material);
     tower.castShadow = true;
     tower.receiveShadow = true;
-    tower.position.set(x, 0, 0);
+    tower.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
     tower.userData = { segment: p.Segment, height };
     tower.scale.y = reducedMotion ? 1 : 0.001;
     const edges = new THREE.LineSegments(
@@ -140,8 +135,7 @@ export function mountTowers(container, profiles, colorOf, onSelect) {
 
     const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTexture(p.Segment_Name, `${p["Revenue_Share_%"].toFixed(1)}%`), depthWrite: false, depthTest: false, transparent: true }));
     label.renderOrder = 10;
-    const labelWidth = Math.min(2.7, (width + gap) * scale * 0.92);
-    label.scale.set(labelWidth, labelWidth * 0.33, 1);
+    label.scale.set(2.3, 0.76, 1);
     label.position.set(tower.position.x, height + 0.8, tower.position.z);
     label.material.opacity = reducedMotion ? 1 : 0;
     pivot.add(label);
@@ -151,7 +145,6 @@ export function mountTowers(container, profiles, colorOf, onSelect) {
 
   // Grow-in animation, a gentle hover bob on the labels and slowly rising particles.
   onFrame((t) => {
-    if (!reducedMotion && !touched) pivot.rotation.y = Math.sin(t * 0.35) * 0.28;
     for (let i = 1; i < dustCount * 3; i += 3) {
       dustPositions[i] = dustPositions[i] > 7 ? 0 : dustPositions[i] + 0.012;
     }
