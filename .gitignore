@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+.env
+.env.*
+*.db
+.streamlit/secrets.toml
+# Rebuilt by `python run_pipeline.py train`; also holds accounts and user workspaces locally.
+Customer Segementation/artifacts/
+customer_iq_public_showcase/outputs/*.joblib

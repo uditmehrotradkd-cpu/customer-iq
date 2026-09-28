@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+# Rebuilt by `python run_pipeline.py train` (the Docker image trains at build time).
+artifacts/
+.streamlit/secrets.toml
+.env

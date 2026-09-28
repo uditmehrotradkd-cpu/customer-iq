@@ -1,0 +1,26 @@
+services:
+  web:
+    build: .
+    image: customer-segmentation:1.0.0
+    ports:
+      - "8000:8000"
+    environment:
+      # Comma-separated hostnames the site is served on (keep localhost for the health check).
+      SEG_ALLOWED_HOSTS: "localhost,127.0.0.1"
+      SEG_RATE_LIMIT_PER_MINUTE: "60"
+      SEG_MAX_UPLOAD_MB: "5"
+      SEG_ENABLE_DOCS: "true"
+      SEG_LOG_LEVEL: "INFO"
+      WEB_CONCURRENCY: "2"
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    # Drafts and published models from the data agent survive container restarts.
+    volumes:
+      - model-store:/app/artifacts/store
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  model-store:

@@ -1,0 +1,12 @@
+.venv/
+**/__pycache__/
+.pytest_cache/
+artifacts/
+notebooks/
+tests/
+app_pages/
+app.py
+dashboard_utils.py
+*.ipynb
+*.md
+.env

@@ -1,0 +1,28 @@
+{
+  "rows": 2240,
+  "selected_k": 2,
+  "silhouette": 0.27752792239917545,
+  "features": [
+    "Recency",
+    "Monetary",
+    "Frequency",
+    "NumDealsPurchases",
+    "NumWebVisitsMonth",
+    "AcceptedCmp1",
+    "AcceptedCmp2",
+    "AcceptedCmp3",
+    "AcceptedCmp4",
+    "AcceptedCmp5",
+    "Response",
+    "Complain",
+    "Kidhome",
+    "Teenhome",
+    "Income",
+    "Age",
+    "AverageOrderValue"
+  ],
+  "personas": {
+    "1": "VIP Heavy Spenders",
+    "0": "At-Risk Customers"
+  }
+}
