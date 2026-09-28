@@ -62,9 +62,28 @@ export function mountTowers(container, profiles, colorOf, onSelect) {
   ring.rotation.x = Math.PI / 2;
   ring.position.y = 0.01;
   pivot.add(ring);
+  const grid = new THREE.PolarGridHelper(5.9, 12, 6, 96, 0x22d3ee, 0x6366f1);
+  grid.position.y = 0.012;
+  grid.material.transparent = true;
+  grid.material.opacity = 0.35;
+  pivot.add(grid);
+
+  // Rising "data" particles above the stage.
+  const dustCount = reducedMotion ? 0 : 260;
+  const dustPositions = new Float32Array(dustCount * 3);
+  for (let i = 0; i < dustCount; i += 1) {
+    const a = Math.random() * Math.PI * 2;
+    const r = Math.sqrt(Math.random()) * 5.8;
+    dustPositions.set([Math.cos(a) * r, Math.random() * 7, Math.sin(a) * r], i * 3);
+  }
+  const dustGeometry = new THREE.BufferGeometry();
+  dustGeometry.setAttribute("position", new THREE.BufferAttribute(dustPositions, 3));
 
   const glow = glowTexture();
   stage.disposables.push(glow);
+  if (dustCount) {
+    pivot.add(new THREE.Points(dustGeometry, new THREE.PointsMaterial({ size: 0.09, map: glow, color: 0x67e8f9, transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending })));
+  }
   const towers = [];
   const n = profiles.length;
   // Scale to the tallest tower so one dominant segment still fits in view.
@@ -85,7 +104,9 @@ export function mountTowers(container, profiles, colorOf, onSelect) {
       clearcoat: 1,
       clearcoatRoughness: 0.2,
       emissive: color,
-      emissiveIntensity: 0.12,
+      emissiveIntensity: 0.28,
+      transparent: true,
+      opacity: 0.92,
     });
     const tower = new THREE.Mesh(geometry, material);
     tower.castShadow = true;
@@ -93,6 +114,11 @@ export function mountTowers(container, profiles, colorOf, onSelect) {
     tower.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
     tower.userData = { segment: p.Segment, height };
     tower.scale.y = reducedMotion ? 1 : 0.001;
+    const edges = new THREE.LineSegments(
+      new THREE.EdgesGeometry(geometry),
+      new THREE.LineBasicMaterial({ color: color.clone().lerp(new THREE.Color(0xffffff), 0.55), transparent: true, opacity: 0.9 }),
+    );
+    tower.add(edges);
     pivot.add(tower);
 
     const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow, color, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending }));
@@ -109,8 +135,12 @@ export function mountTowers(container, profiles, colorOf, onSelect) {
     towers.push({ tower, label, delay: i * 0.18 });
   });
 
-  // Grow-in animation, then a gentle hover bob on the labels.
+  // Grow-in animation, a gentle hover bob on the labels and slowly rising particles.
   onFrame((t) => {
+    for (let i = 1; i < dustCount * 3; i += 3) {
+      dustPositions[i] = dustPositions[i] > 7 ? 0 : dustPositions[i] + 0.012;
+    }
+    if (dustCount) dustGeometry.attributes.position.needsUpdate = true;
     for (const { tower, label, delay } of towers) {
       const k = reducedMotion ? 1 : Math.min(Math.max((t - delay) / 1.2, 0), 1);
       const eased = 1 - (1 - k) ** 3;

@@ -10,4 +10,9 @@
   var dark = pref === "dark" || (pref === "auto" && window.matchMedia("(prefers-color-scheme: dark)").matches);
   document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
   document.documentElement.setAttribute("data-theme-pref", pref);
+  try {
+    if (localStorage.getItem("ciq-motion") === "calm") document.documentElement.setAttribute("data-motion", "calm");
+  } catch (e) {
+    /* motion preference simply won't persist */
+  }
 })();

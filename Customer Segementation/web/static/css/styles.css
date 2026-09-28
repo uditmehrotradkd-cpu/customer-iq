@@ -492,8 +492,35 @@ body.signed-out .nav, body.signed-out .nav-toggle { display: none !important; }
 .muted { color: var(--muted); }
 pre.json { background: var(--dark); color: #e2e8f0; padding: 14px; border-radius: 10px; overflow: auto; font-size: .78rem; max-height: 320px; }
 details summary { cursor: pointer; font-weight: 600; }
-.reveal-item { opacity: 0; transition: opacity .5s ease; }
-.reveal-item.in-view { opacity: 1; }
+.reveal-item { opacity: 0; transform: translateY(16px); transition: opacity .6s ease, transform .6s cubic-bezier(.2, .7, .2, 1); }
+.reveal-item.in-view { opacity: 1; transform: none; }
+
+/* ---------- tech motion layer ---------- */
+:root { --accent: #06b6d4; --glow: rgba(79, 70, 229, .35); }
+:root[data-theme="dark"] { --accent: #22d3ee; --glow: rgba(129, 140, 248, .45); }
+#fx-bg { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; }
+body::before { content: ""; position: fixed; inset: -20%; z-index: -2; pointer-events: none; opacity: .5;
+  background: radial-gradient(40% 35% at 20% 25%, rgba(99, 102, 241, .16), transparent 70%), radial-gradient(35% 30% at 80% 20%, rgba(6, 182, 212, .14), transparent 70%), radial-gradient(40% 35% at 60% 85%, rgba(217, 70, 239, .10), transparent 70%);
+  animation: aurora 26s ease-in-out infinite alternate; }
+:root[data-theme="dark"] body::before { opacity: 1; }
+@keyframes aurora { 50% { transform: translate3d(3%, -2%, 0) rotate(3deg) scale(1.05); } 100% { transform: translate3d(-3%, 2%, 0) rotate(-2deg) scale(1.02); } }
+.page-enter { animation: page-in .45s cubic-bezier(.2, .7, .2, 1); }
+@keyframes page-in { from { opacity: 0; transform: translateY(10px); filter: blur(3px); } }
+.card, .kpi { transition: opacity .6s ease, transform .6s cubic-bezier(.2, .7, .2, 1), border-color .25s, box-shadow .25s; }
+.tilt.in-view { transition: transform .15s ease-out, opacity .6s ease, border-color .25s, box-shadow .25s; transition-delay: 0s !important; }
+.card:hover, .kpi:hover { border-color: color-mix(in srgb, var(--primary) 45%, var(--line)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 25%, transparent), 0 14px 40px -18px var(--glow); }
+.kpi::after { content: ""; position: absolute; left: 14px; right: 14px; bottom: 0; height: 2px; border-radius: 2px; background: linear-gradient(90deg, var(--primary), var(--accent)); transform: scaleX(.15); transform-origin: left; opacity: .7; transition: transform .5s cubic-bezier(.2, .7, .2, 1); }
+.kpi:hover::after, .kpi.in-view::after { transform: scaleX(1); }
+.seg-card:hover, .starter:hover { box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent), 0 14px 36px -18px var(--glow); }
+.btn { transition: background .2s, box-shadow .2s, transform .15s; }
+.btn:hover { box-shadow: 0 8px 24px -10px var(--glow); }
+.motion-toggle { font: inherit; font-size: .8rem; display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 10px; margin-left: 6px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); cursor: pointer; }
+.motion-toggle:hover { color: var(--ink); }
+.motion-toggle[aria-pressed="true"] { background: var(--primary-soft); color: var(--primary); font-weight: 600; }
+.motion-toggle .label { display: none; }
+:root[data-motion="calm"] *, :root[data-motion="calm"] *::before, :root[data-motion="calm"] *::after { animation: none !important; transition: none !important; }
+:root[data-motion="calm"] .reveal-item { opacity: 1; transform: none; }
+:root[data-motion="calm"] #fx-bg { display: none; }
 
 /* ---------- tablet ---------- */
 @media (min-width: 640px) {
@@ -503,6 +530,7 @@ details summary { cursor: pointer; font-weight: 600; }
   .hero-actions .btn { flex: 0 0 auto; }
   .checks { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .theme-switch .label { display: inline; }
+  .motion-toggle .label { display: inline; }
   .form-actions { position: static; background: none; }
   .form-actions .btn { width: auto; }
   .chart-box { height: 280px; }
@@ -550,5 +578,6 @@ details summary { cursor: pointer; font-weight: 600; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
-  .reveal-item { opacity: 1; }
+  .reveal-item { opacity: 1; transform: none; }
+  #fx-bg { display: none; }
 }

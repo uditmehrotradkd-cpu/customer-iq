@@ -57,7 +57,7 @@ def test_index_served_with_security_headers(client):
     assert client.get("/static/js/app.js").status_code == 200
     assert client.get("/static/vendor/chart.umd.min.js").status_code == 200
     assert "media-src 'self'" in res.headers["content-security-policy"]
-    for asset in ("/static/vendor/three.module.min.js", "/static/media/hero-mall.mp4", "/static/media/premium.jpg", "/static/js/universe.js", "/static/js/towers.js", "/static/js/theme-init.js", "/static/js/theme.js"):
+    for asset in ("/static/vendor/three.module.min.js", "/static/media/hero-data.mp4", "/static/media/persona-premium.jpg", "/static/media/agent-particles.mp4", "/static/js/universe.js", "/static/js/towers.js", "/static/js/theme-init.js", "/static/js/theme.js"):
         assert client.get(asset).status_code == 200, asset
 
 

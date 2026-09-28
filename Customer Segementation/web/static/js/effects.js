@@ -1,8 +1,31 @@
 // Motion & depth effects: 3D tilt, scroll reveal, count-up numbers and background video helpers.
 import { h } from "./dom.js";
 
-export const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+// "Calm" (set by the motion toggle, applied before paint by theme-init.js) behaves like the OS reduced-motion setting.
+export const calmMode = document.documentElement.getAttribute("data-motion") === "calm";
+export const reducedMotion = calmMode || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const cleanups = [];
+
+export function initMotionToggle() {
+  const button = document.getElementById("motion-toggle");
+  if (!button) return;
+  button.setAttribute("aria-pressed", String(calmMode));
+  button.addEventListener("click", () => {
+    try {
+      calmMode ? localStorage.removeItem("ciq-motion") : localStorage.setItem("ciq-motion", "calm");
+    } catch {
+      return;
+    }
+    location.reload();
+  });
+}
+
+export function pageTransition(el) {
+  if (reducedMotion) return;
+  el.classList.remove("page-enter");
+  void el.offsetWidth; // restart the CSS animation
+  el.classList.add("page-enter");
+}
 
 export function onCleanup(fn) {
   cleanups.push(fn);
@@ -58,7 +81,7 @@ export function reveal(root) {
   );
   items.forEach((el, i) => {
     el.classList.add("reveal-item");
-    el.style.transitionDelay = `${Math.min(i % 6, 5) * 60}ms`;
+    el.style.transitionDelay = `${Math.min(i % 6, 5) * 70}ms`;
     observer.observe(el);
   });
 }

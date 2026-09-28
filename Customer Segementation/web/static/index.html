@@ -8,12 +8,13 @@
   <title>Customer Segmentation</title>
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
   <script src="/static/js/theme-init.js"></script>
-  <link rel="preload" href="/static/media/hero-poster.jpg" as="image">
+  <link rel="preload" href="/static/media/hero-data-poster.jpg" as="image">
   <link rel="stylesheet" href="/static/css/styles.css">
   <script src="/static/vendor/chart.umd.min.js" defer></script>
   <script type="module" src="/static/js/app.js"></script>
 </head>
 <body>
+  <canvas id="fx-bg" aria-hidden="true"></canvas>
   <a class="skip-link" href="#main">Skip to content</a>
   <header class="topbar">
     <a class="brand" href="#/overview">
@@ -34,6 +35,10 @@
         <span class="label">Auto</span>
       </button>
     </div>
+    <button type="button" id="motion-toggle" class="motion-toggle" aria-pressed="false" title="Calm mode: turn off background animation, video autoplay and 3D spin">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M3 12c3-6 6 6 9 0s6 6 9 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <span class="label">Calm</span>
+    </button>
     <div id="user-menu" class="user-menu hidden"></div>
     <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav" id="nav-toggle" aria-label="Menu"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
     <nav id="nav" class="nav" aria-label="Main">

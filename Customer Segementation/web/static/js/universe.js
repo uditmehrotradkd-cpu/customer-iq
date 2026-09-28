@@ -32,6 +32,7 @@ export function mountUniverse(container, data, colorOf) {
   );
 
   const core = new THREE.SphereGeometry(0.28, 32, 32);
+  const orbits = [];
   for (const c of data.centers) {
     const p = new THREE.Vector3(...c.position).sub(offset);
     const mesh = new THREE.Mesh(core, new THREE.MeshBasicMaterial({ color: colorOf(c.segment) }));
@@ -39,9 +40,36 @@ export function mountUniverse(container, data, colorOf) {
     halo.scale.setScalar(2.4);
     mesh.position.copy(p);
     halo.position.copy(p);
-    pivot.add(mesh, halo);
+    const orbit = new THREE.Mesh(
+      new THREE.TorusGeometry(0.75, 0.012, 8, 96),
+      new THREE.MeshBasicMaterial({ color: colorOf(c.segment), transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false }),
+    );
+    orbit.position.copy(p);
+    orbit.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+    orbits.push({ orbit, halo, phase: Math.random() * Math.PI * 2 });
+    pivot.add(mesh, halo, orbit);
   }
 
-  if (!reducedMotion) onFrame((t) => (pivot.position.y = Math.sin(t) * 0.12));
+  // Distant starfield so the galaxy floats in space.
+  const starCount = 900;
+  const stars = new Float32Array(starCount * 3);
+  for (let i = 0; i < starCount; i += 1) {
+    const v = new THREE.Vector3().randomDirection().multiplyScalar(18 + Math.random() * 22);
+    stars.set([v.x, v.y, v.z], i * 3);
+  }
+  const starGeometry = new THREE.BufferGeometry();
+  starGeometry.setAttribute("position", new THREE.BufferAttribute(stars, 3));
+  stage.scene.add(new THREE.Points(starGeometry, new THREE.PointsMaterial({ size: 0.12, map: glow, color: 0xc7d2fe, transparent: true, opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending })));
+
+  if (!reducedMotion) {
+    onFrame((t) => {
+      pivot.position.y = Math.sin(t) * 0.12;
+      for (const { orbit, halo, phase } of orbits) {
+        orbit.rotation.z = t * 0.8 + phase;
+        orbit.rotation.x += 0.004;
+        halo.scale.setScalar(2.4 + Math.sin(t * 2 + phase) * 0.35);
+      }
+    });
+  }
   return stage.dispose;
 }

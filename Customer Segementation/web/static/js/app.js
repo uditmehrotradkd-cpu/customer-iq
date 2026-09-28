@@ -25,7 +25,8 @@ import {
   scatterChart,
   withAlpha,
 } from "./charts.js";
-import { backgroundVideo, countUp, onCleanup, reducedMotion, reveal, runCleanups, tilt } from "./effects.js";
+import { backgroundVideo, countUp, initMotionToggle, onCleanup, pageTransition, reducedMotion, reveal, runCleanups, tilt } from "./effects.js";
+import { startBackdrop } from "./backdrop.js";
 import { BAGS_VIDEO, CREDITS, EXPLORER_IMAGE, HERO_VIDEO, METHOD_IMAGE, persona } from "./media.js";
 import { initThemeSwitch } from "./theme.js";
 import { renderAgent } from "./agent-page.js";
@@ -1016,6 +1017,7 @@ async function navigate() {
     document.title = `${key === "assign" && isGeneric() ? "Assign a record" : routes[key].title} · Customer Segmentation`;
     await routes[key].render(view, token, param);
     if (stillCurrent(token)) {
+      pageTransition(view);
       view.querySelectorAll(".kpi").forEach((el) => tilt(el, { max: 6, scale: 1.01 }));
       reveal(view);
     }
@@ -1122,5 +1124,7 @@ window.addEventListener("hashchange", () => {
   document.getElementById("main").focus({ preventScroll: true });
 });
 initThemeSwitch(applyChartTheme);
+initMotionToggle();
+startBackdrop();
 boot();
 renderCredits();
