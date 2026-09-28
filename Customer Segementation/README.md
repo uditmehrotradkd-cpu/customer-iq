@@ -306,7 +306,7 @@
 - **Model & methodology:** k-selection charts, algorithm comparison, cleaning / column audit, skewness, fairness check, model card
 - **Data agent:** chat assistant powered by **Google Gemini** that answers questions, analyses any uploaded CSV/Excel/JSON file, **rebuilds the whole site from your own dataset as soon as you send it**, produces datasets and Excel reports, keeps **chat history**, and can act for you (apply an uploaded file, reset, look up exact column statistics, hand out the report)
 - Built on a **versioned REST API** (FastAPI, `/api/v1`, OpenAPI docs at `/docs`) that other systems (CRM, marketing automation) can call
-- **Immersive tech design:** data-dashboard and neural-particle videos, neon persona photos, an animated "data network" backdrop, page transitions, glowing cards, neon **3D skyline and customer galaxy** (WebGL), light/dark theme and a **Calm** mode that switches animation off; all media self-hosted from Pexels (credits in the site footer)
+- **Immersive tech design:** data-dashboard and neural-particle videos, neon persona photos, an animated "data network" backdrop, page transitions, glowing cards, neon **3D skyline and customer galaxy** (WebGL) in their own glass panel with a Skyline/Galaxy toolbar, light/dark theme and a **Calm** mode that switches animation off; all media self-hosted from Pexels (credits in the site footer)
 
 **Visual:** screenshots of the website pages (run `.\run_website.ps1`, open http://localhost:8000)
 
@@ -372,6 +372,9 @@ flowchart LR
 | **Gemini AI agent** | The agent now uses **Google Gemini** (`gemini-3.8-flash`) through its OpenAI-compatible API. It sees your workspace *and* the profile of your last uploaded file (column types, ranges, top values) and can call tools: `apply_uploaded_file`, `reset_workspace`, `column_stats` (exact numbers per column / segment) and `download_report`. If a model is busy or rate-limited it falls back to other Gemini models. OpenAI, Groq and Ollama are one setting away (`SEG_LLM_PROVIDER`) |
 | **New look** | Tech / data theme: dashboard video on sign-in and Overview, neural-particle video on the data agent, new persona and page photos, animated data-network backdrop, smooth page transitions and scroll reveals, neon hover glow on cards, neon 3D skyline (glowing edges, grid floor, rising particles) and galaxy (starfield, orbit rings) |
 | **Calm mode** | New **Calm** button in the top bar turns off the backdrop, video autoplay and 3D spin (remembered per browser; also automatic with the OS "reduce motion" setting) |
+| **Overview redesign** | The 3D view now sits in its own dark glass panel (the hero video no longer shows through it) with the **Skyline / Galaxy** switch and hint in a toolbar above the scene, so nothing overlaps the towers. Text on the left, 3D on the right on desktop; dimmer video, pill-style tags and segment legend, gradient headline, "Pause video" button |
+| **Skyline** | Towers stand on a ring and the stage **rotates a full 360°** (drag to turn it yourself, tap a tower to open its profile). Tall and short towers alternate so neighbouring labels sit at different heights and stay readable; labels are always drawn on top |
+| **Reliability** | The cloud-database connection now uses TCP keepalives, a 15-second statement timeout and reconnects after 4 minutes idle, so a silently dropped connection can no longer stall page loads |
 | **Training data** | `data/synthetic_customers_10000.csv`: 10,000 privacy-safe synthetic customers in the upload format (92% land in their intended segment); `..._labels.csv` holds the intended segment for comparison |
 | **Version control** | Code is on GitHub (see *Version control* below) so any change can be reverted |
 
