@@ -268,17 +268,17 @@ async function renderOverview(root, token) {
     { key: "galaxy", label: "Galaxy", hint: `Each dot is a ${w.entity_singular ?? "row"} · drag to rotate` },
   ];
   const switchButtons = views.map((v) => h("button", { type: "button", "aria-pressed": "false" }, v.label));
+  const canvasHost = h("div", { class: "stage-canvas" });
   const stage = h(
     "div",
     { class: "hero-stage" },
-    h("div", { class: "view-switch", role: "group", "aria-label": "3D view" }, switchButtons),
-    hint,
+    h("div", { class: "stage-toolbar" }, h("div", { class: "view-switch", role: "group", "aria-label": "3D view" }, switchButtons), hint),
+    canvasHost,
   );
   const hero = h(
     "section",
     { class: "hero" },
     video,
-    toggle,
     h(
       "div",
       { class: "hero-copy" },
@@ -294,6 +294,7 @@ async function renderOverview(root, token) {
         h("a", { class: "btn ghost", href: "#/assign" }, generic ? "Assign a record" : "Assign a customer"),
       ),
       h("div", { class: "legend", "aria-hidden": "true" }, state.segments.map((s) => h("span", {}, h("span", { class: `dot dot-${s.id % 10}` }), s.name))),
+      toggle,
     ),
     stage,
   );
@@ -360,14 +361,14 @@ async function renderOverview(root, token) {
       hint.textContent = views.find((v) => v.key === key).hint;
       dispose =
         key === "skyline"
-          ? mountTowers(stage, profiles, colorOf, (segment) => (location.hash = `#/segments/${segment}`))
-          : mountUniverse(stage, universe, colorOf);
+          ? mountTowers(canvasHost, profiles, colorOf, (segment) => (location.hash = `#/segments/${segment}`))
+          : mountUniverse(canvasHost, universe, colorOf);
     };
     views.forEach((v, i) => switchButtons[i].addEventListener("click", () => show(v.key)));
     onCleanup(() => dispose());
     show("skyline");
   } catch {
-    stage.classList.add("no-webgl");
+    canvasHost.classList.add("no-webgl");
   }
 }
 

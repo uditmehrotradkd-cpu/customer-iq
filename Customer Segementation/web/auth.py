@@ -31,6 +31,7 @@ USERNAME_RE = r"^[A-Za-z0-9_.-]{3,32}$"
 _SCRYPT = {"n": 2**14, "r": 8, "p": 1, "dklen": 32}
 # Signed-in users make several API calls per page; caching token lookups briefly saves cloud round trips.
 SESSION_CACHE_SECONDS = 30
+PG_MAX_IDLE_SECONDS = 240
 log = logging.getLogger(__name__)
 
 SQLITE_SCHEMA = [
@@ -122,6 +123,7 @@ class UserStore:
         self.path = Path(path) if path else None
         self._lock = threading.Lock()
         self._conn = None
+        self._last_used = 0.0
         self._sessions: dict[str, tuple[dict, float]] = {}
         if url:
             import psycopg  # only needed for the cloud database
@@ -139,10 +141,25 @@ class UserStore:
         return "postgres" if self.url else "sqlite"
 
     def _pg_connection(self):
+        # Proxies silently drop long-idle connections; reconnecting beats hanging on a dead socket.
+        if self._conn is not None and time.monotonic() - self._last_used > PG_MAX_IDLE_SECONDS:
+            self._conn.close()
+            self._conn = None
         if self._conn is None or self._conn.closed:
             from psycopg.rows import dict_row
 
-            self._conn = self._pg.connect(self.url, row_factory=dict_row, connect_timeout=10, autocommit=True)
+            self._conn = self._pg.connect(
+                self.url,
+                row_factory=dict_row,
+                autocommit=True,
+                connect_timeout=10,
+                keepalives=1,
+                keepalives_idle=20,
+                keepalives_interval=5,
+                keepalives_count=3,
+                options="-c statement_timeout=15000",
+            )
+        self._last_used = time.monotonic()
         return self._conn
 
     def _run(self, fn):

@@ -118,15 +118,15 @@ export function backgroundVideo({ src, poster }, label) {
     video.autoplay = true;
     video.addEventListener("canplay", () => video.play().catch(() => {}), { once: true });
   }
-  const toggle = h("button", { class: "video-toggle", type: "button", "aria-label": `Pause ${label}` }, reducedMotion ? "Play" : "Pause");
+  const toggle = h("button", { class: "video-toggle", type: "button", "aria-label": `Pause ${label}` }, reducedMotion ? "▶ Play video" : "❚❚ Pause video");
   toggle.addEventListener("click", () => {
     if (video.paused) {
       video.play().catch(() => {});
-      toggle.textContent = "Pause";
+      toggle.textContent = "❚❚ Pause video";
       toggle.setAttribute("aria-label", `Pause ${label}`);
     } else {
       video.pause();
-      toggle.textContent = "Play";
+      toggle.textContent = "▶ Play video";
       toggle.setAttribute("aria-label", `Play ${label}`);
     }
   });

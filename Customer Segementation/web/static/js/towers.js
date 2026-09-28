@@ -6,20 +6,23 @@ import { reducedMotion } from "./effects.js";
 function labelTexture(title, value) {
   const canvas = document.createElement("canvas");
   canvas.width = 512;
-  canvas.height = 160;
+  canvas.height = 168;
   const ctx = canvas.getContext("2d");
-  ctx.fillStyle = "rgba(15, 23, 42, 0.78)";
+  ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+  ctx.strokeStyle = "rgba(148, 163, 184, 0.35)";
+  ctx.lineWidth = 3;
   ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(4, 4, 504, 152, 28);
-  else ctx.rect(4, 4, 504, 152);
+  if (ctx.roundRect) ctx.roundRect(4, 4, 504, 160, 28);
+  else ctx.rect(4, 4, 504, 160);
   ctx.fill();
+  ctx.stroke();
   ctx.fillStyle = "#ffffff";
-  ctx.font = "700 64px Segoe UI, system-ui, sans-serif";
+  ctx.font = "700 66px Segoe UI, system-ui, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(value, 256, 82);
+  ctx.fillText(value, 256, 84);
   ctx.fillStyle = "#cbd5e1";
-  ctx.font = "500 30px Segoe UI, system-ui, sans-serif";
-  ctx.fillText(title, 256, 128, 480);
+  ctx.font = "600 40px Segoe UI, system-ui, sans-serif";
+  ctx.fillText(title, 256, 138, 488);
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
@@ -28,14 +31,17 @@ function labelTexture(title, value) {
 export function mountTowers(container, profiles, colorOf, onSelect) {
   const stage = createStage(container, {
     label: "3D skyline: one tower per segment, height shows share of revenue. Drag to rotate, tap a tower to open it.",
-    cameraPosition: [0, 7.5, 14.5],
-    target: [0, 1.4, 0],
+    cameraPosition: [0, 5, 13.5],
+    target: [0, 2.1, 0],
     shadows: true,
   });
   if (!stage) return () => {};
   const { scene, pivot, camera, el, state, onFrame } = stage;
-  state.spin = reducedMotion ? 0 : 0.0025;
-  state.tiltLimit = 0.25;
+  // Towers stand in a row, so a full spin would hide them behind each other: sway gently instead.
+  state.spin = 0;
+  state.tiltLimit = 0.2;
+  let touched = false;
+  el.addEventListener("pointerdown", () => (touched = true));
 
   scene.add(new THREE.HemisphereLight(0xdbeafe, 0x0f172a, 1.1));
   const sun = new THREE.DirectionalLight(0xffffff, 2.2);
@@ -85,14 +91,20 @@ export function mountTowers(container, profiles, colorOf, onSelect) {
     pivot.add(new THREE.Points(dustGeometry, new THREE.PointsMaterial({ size: 0.09, map: glow, color: 0x67e8f9, transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending })));
   }
   const towers = [];
-  const n = profiles.length;
+  // Largest revenue share first, left to right, with room between towers so labels never collide.
+  const ordered = [...profiles].sort((a, b) => b["Revenue_Share_%"] - a["Revenue_Share_%"]);
+  const widths = ordered.map((p) => 0.9 + (p["Customer_Share_%"] / 100) * 2.6);
+  const gap = 1.25;
+  const rowWidth = widths.reduce((s, w) => s + w, 0) + gap * (ordered.length - 1);
+  const scale = Math.min(1, 10 / rowWidth);
+  let cursor = -rowWidth / 2;
   // Scale to the tallest tower so one dominant segment still fits in view.
   const maxShare = Math.max(...profiles.map((p) => p["Revenue_Share_%"]), 1);
-  profiles.forEach((p, i) => {
-    const angle = (i / n) * Math.PI * 2;
-    const radius = n > 1 ? 3.3 : 0;
-    const height = 0.5 + (p["Revenue_Share_%"] / maxShare) * 5.5;
-    const width = 0.9 + (p["Customer_Share_%"] / 100) * 3.2;
+  ordered.forEach((p, i) => {
+    const width = widths[i] * scale;
+    const x = (cursor + widths[i] / 2) * scale;
+    cursor += widths[i] + gap;
+    const height = 0.5 + (p["Revenue_Share_%"] / maxShare) * 5.2;
     const color = new THREE.Color(colorOf(p.Segment));
 
     const geometry = new THREE.BoxGeometry(width, height, width);
@@ -111,7 +123,7 @@ export function mountTowers(container, profiles, colorOf, onSelect) {
     const tower = new THREE.Mesh(geometry, material);
     tower.castShadow = true;
     tower.receiveShadow = true;
-    tower.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
+    tower.position.set(x, 0, 0);
     tower.userData = { segment: p.Segment, height };
     tower.scale.y = reducedMotion ? 1 : 0.001;
     const edges = new THREE.LineSegments(
@@ -126,8 +138,10 @@ export function mountTowers(container, profiles, colorOf, onSelect) {
     halo.position.set(tower.position.x, 0.05, tower.position.z);
     pivot.add(halo);
 
-    const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTexture(p.Segment_Name, `${p["Revenue_Share_%"].toFixed(1)}%`), depthWrite: false, transparent: true }));
-    label.scale.set(2.6, 0.81, 1);
+    const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTexture(p.Segment_Name, `${p["Revenue_Share_%"].toFixed(1)}%`), depthWrite: false, depthTest: false, transparent: true }));
+    label.renderOrder = 10;
+    const labelWidth = Math.min(2.7, (width + gap) * scale * 0.92);
+    label.scale.set(labelWidth, labelWidth * 0.33, 1);
     label.position.set(tower.position.x, height + 0.8, tower.position.z);
     label.material.opacity = reducedMotion ? 1 : 0;
     pivot.add(label);
@@ -137,6 +151,7 @@ export function mountTowers(container, profiles, colorOf, onSelect) {
 
   // Grow-in animation, a gentle hover bob on the labels and slowly rising particles.
   onFrame((t) => {
+    if (!reducedMotion && !touched) pivot.rotation.y = Math.sin(t * 0.35) * 0.28;
     for (let i = 1; i < dustCount * 3; i += 3) {
       dustPositions[i] = dustPositions[i] > 7 ? 0 : dustPositions[i] + 0.012;
     }
