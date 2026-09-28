@@ -298,15 +298,15 @@
 
 ## Slide 19: Production Website (Bonus)
 
-- **Sign-in:** every user creates an account and gets a **private workspace**; nothing one user uploads or trains changes what others see
+- **Sign-in:** every user creates an account and gets a **private workspace**; nothing one user uploads or trains changes what others see. Accounts live in a **cloud PostgreSQL database**, so the same login works on the live site and on localhost and survives redeploys
 - **Overview:** KPIs, customer vs. revenue share, 3D skyline / galaxy, interactive PCA map, summary table
 - **Segment profiles:** metrics vs. average, defining traits, mix charts, radar, fingerprint heatmap, playbook, guardrail, CSV export
 - **Explorer:** filter segments, compare distributions and relationships of any feature, category mix, download lists
 - **Assign:** score one record (form adapts to the dataset's columns) or a whole file, downloadable as an **Excel report with charts**
 - **Model & methodology:** k-selection charts, algorithm comparison, cleaning / column audit, skewness, fairness check, model card
-- **Data agent:** chat assistant that answers questions, analyses any uploaded CSV/Excel/JSON file, **rebuilds the whole site from your own dataset**, produces datasets and Excel reports, keeps **chat history**, and (optionally) answers **general questions with an AI model**
+- **Data agent:** chat assistant powered by **Google Gemini** that answers questions, analyses any uploaded CSV/Excel/JSON file, **rebuilds the whole site from your own dataset as soon as you send it**, produces datasets and Excel reports, keeps **chat history**, and can act for you (apply an uploaded file, reset, look up exact column statistics, hand out the report)
 - Built on a **versioned REST API** (FastAPI, `/api/v1`, OpenAPI docs at `/docs`) that other systems (CRM, marketing automation) can call
-- **Immersive design:** video heroes, interactive **3D customer universe** (WebGL), segment photo carousel, tilt effects, light/dark theme; all media self-hosted from Pexels (credits in the site footer)
+- **Immersive tech design:** data-dashboard and neural-particle videos, neon persona photos, an animated "data network" backdrop, page transitions, glowing cards, neon **3D skyline and customer galaxy** (WebGL), light/dark theme and a **Calm** mode that switches animation off; all media self-hosted from Pexels (credits in the site footer)
 
 **Visual:** screenshots of the website pages (run `.\run_website.ps1`, open http://localhost:8000)
 
@@ -332,7 +332,8 @@ flowchart LR
     R --> W
     W --> S[Website SPA<br/>sign-in, pages, data agent]
     W --> X[CRM / other systems]
-    S -. optional .-> AI[AI model<br/>OpenAI-compatible / Ollama]
+    W --> P[(Cloud PostgreSQL<br/>accounts + chat history)]
+    S -. tool calls .-> AI[Google Gemini<br/>or any OpenAI-compatible model]
     I --> J[Streamlit dashboard]
     I --> K[CLI batch scoring]
     I --> L[Notebook / slides]
@@ -340,8 +341,8 @@ flowchart LR
 
 - One reusable package (`segmentation/`) drives the notebook, CLI, API, website and dashboard
 - Production hardening: input validation, security headers (CSP, HSTS-ready), rate limiting (scoring, training, sign-in and AI questions), upload limits, CSV/Excel formula-injection protection, trusted hosts, cross-site request blocking, salted scrypt password hashes, HttpOnly session cookies, non-root Docker image with health check
-- Persisted artifacts: model (`segmenter.joblib`), CSV/JSON tables, model card, 13 figures; user accounts, chat history and per-user workspaces in `artifacts/store`
-- 69 automated tests (unit, integration, API, security, accounts, dataset workspaces, AI routing and dashboard smoke tests)
+- Persisted artifacts: model (`segmenter.joblib`), CSV/JSON tables, model card, 13 figures; user accounts and chat history in PostgreSQL (SQLite fallback); per-user workspaces in `artifacts/store`
+- 71 automated tests (unit, integration, API, security, accounts, cloud-account import, dataset workspaces, AI routing and tool calls, dashboard smoke tests)
 
 ---
 
@@ -362,6 +363,20 @@ flowchart LR
 
 ## What's new
 
+### Latest update
+
+| Area | Change |
+|---|---|
+| **Cloud accounts (login fix)** | Accounts and chat history moved from a per-server SQLite file to a **Railway PostgreSQL** database (`SEG_DATABASE_URL` / `DATABASE_URL`). An account created on the live site now also works on localhost and after every redeploy. Existing `users.db` accounts are imported automatically once; usernames are case-insensitive; workspaces are keyed by username so they follow the account |
+| **Uploads rebuild every page** | Sending a file in the data agent now defaults to **Segment & apply**: customer-format files train the customer model, any other table is segmented on its own columns, and Overview, Profiles, Explorer, Assign and Methodology switch to it immediately. **Analyze only** is still available. The last upload is remembered, so typing "apply this file to the overview" later also works |
+| **Gemini AI agent** | The agent now uses **Google Gemini** (`gemini-3.8-flash`) through its OpenAI-compatible API. It sees your workspace *and* the profile of your last uploaded file (column types, ranges, top values) and can call tools: `apply_uploaded_file`, `reset_workspace`, `column_stats` (exact numbers per column / segment) and `download_report`. If a model is busy or rate-limited it falls back to other Gemini models. OpenAI, Groq and Ollama are one setting away (`SEG_LLM_PROVIDER`) |
+| **New look** | Tech / data theme: dashboard video on sign-in and Overview, neural-particle video on the data agent, new persona and page photos, animated data-network backdrop, smooth page transitions and scroll reveals, neon hover glow on cards, neon 3D skyline (glowing edges, grid floor, rising particles) and galaxy (starfield, orbit rings) |
+| **Calm mode** | New **Calm** button in the top bar turns off the backdrop, video autoplay and 3D spin (remembered per browser; also automatic with the OS "reduce motion" setting) |
+| **Training data** | `data/synthetic_customers_10000.csv`: 10,000 privacy-safe synthetic customers in the upload format (92% land in their intended segment); `..._labels.csv` holds the intended segment for comparison |
+| **Version control** | Code is on GitHub (see *Version control* below) so any change can be reverted |
+
+### Earlier updates
+
 | Area | Change |
 |---|---|
 | **Accounts** | Sign-in / create-account screen; every user gets a private workspace. Passwords are salted scrypt hashes, sessions use an HttpOnly cookie, sign-in attempts are rate-limited |
@@ -371,7 +386,7 @@ flowchart LR
 | **Excel reports with charts** | Scoring, segmenting or training produces a downloadable `.xlsx`: summary charts (segment sizes, shares), a chart per key measure, plain-language segment insights and every row with its segment. Also available from batch scoring on the Assign page and by asking "download the segment report with charts" |
 | **Data agent redesign** | Modern chat UI with avatars, typing indicator, drag-and-drop uploads, segment cards, greeting by name, prompt suggestions that adapt to your dataset |
 | **Chat history** | History button in the chat: reopen and continue earlier chats, re-download every dataset from the *Data* tab; saved to your account (server side) |
-| **General AI answers** | Optional: connect any OpenAI-compatible model (OpenAI, Groq, OpenRouter, local Ollama…). Site and data questions are still answered by the built-in agent; everything else goes to the AI with your workspace as context. AI replies are labelled |
+| **General AI answers** | Connect any OpenAI-compatible model (now Gemini by default). Site and data questions are still answered by the built-in agent; everything else goes to the AI with your workspace as context. AI replies are labelled |
 | **Media** | Videos on the Overview, Assign, data agent and sign-in pages; each segment gets its own photo, also for uploaded datasets |
 | **Performance** | Large uploads use sampled silhouette / Ward comparison, halving training time on 10,000-row files |
 
@@ -382,22 +397,24 @@ Customer Segementation/
 ├── web/                       # Production website + REST API (FastAPI)
 │   ├── main.py                # App factory, middleware, static site
 │   ├── api.py                 # /api/v1 endpoints (per-user workspace resolution)
-│   ├── agent.py, agent_api.py # Data agent: chat routing, file actions, training, datasets
+│   ├── agent.py, agent_api.py # Data agent: chat routing, file actions (Segment & apply), AI tool calls, datasets
 │   ├── agent_generic.py       # Chat commands for workspaces built from your own dataset
-│   ├── auth.py                # Accounts, sessions, chat history (SQLite users.db)
+│   ├── auth.py                # Accounts, sessions, chat history (cloud PostgreSQL, SQLite fallback)
 │   ├── generic_service.py     # Workspace for ANY uploaded table (same views as services.py)
 │   ├── registry.py            # Drafts, publishing, per-user registries
 │   ├── report.py              # Excel reports with native charts
-│   ├── llm.py                 # Optional AI answers (OpenAI-compatible API)
+│   ├── llm.py                 # AI answers + tool calling (Gemini / any OpenAI-compatible API, model fallback)
 │   ├── knowledge.py           # Built-in Q&A knowledge base
 │   ├── datasets.py, file_io.py# Dataset builders; CSV/Excel/JSON reading and column mapping
 │   ├── services.py            # View models over the trained segmenter
 │   ├── schemas.py             # Pydantic request/response validation
 │   ├── security.py            # Security headers, rate limit, body-size guard
-│   ├── settings.py            # SEG_* environment configuration
-│   └── static/                # Single-page website (HTML/CSS/JS, vendored Chart.js / three.js, media)
+│   ├── settings.py            # SEG_* environment configuration (AI provider presets)
+│   └── static/                # Single-page website (HTML/CSS/JS, vendored Chart.js / three.js, media;
+│                              #   backdrop.js = animated data-network background, effects.js = motion + Calm mode)
 ├── Dockerfile, docker-compose.yml, .dockerignore
-├── run_website.ps1            # Start the website locally
+├── run_website.ps1            # Start the website locally (loads settings from .env)
+├── .env                       # Local secrets (database URL, Gemini key) - git-ignored, never committed
 ├── app.py                     # Streamlit entry point (st.navigation)
 ├── app_pages/                 # Dashboard pages: overview, profiles, explorer, assign, diagnostics
 ├── dashboard_utils.py         # Cached model loading and chart helpers
@@ -405,7 +422,9 @@ Customer Segementation/
 ├── requirements.txt           # Full dev environment (includes requirements-web.txt)
 ├── requirements-web.txt       # Minimal runtime for the website / Docker image
 ├── data/
-│   └── Customer_Segmentation_Cleaned_Encoded-1.csv
+│   ├── Customer_Segmentation_Cleaned_Encoded-1.csv
+│   ├── synthetic_customers_10000.csv         # 10k synthetic customers for training
+│   └── synthetic_customers_10000_labels.csv  # Intended segment per synthetic customer
 ├── notebooks/
 │   └── Customer_Segmentation.ipynb   # 20-section end-to-end analysis
 ├── segmentation/              # Production package
@@ -420,8 +439,9 @@ Customer Segementation/
 │   ├── pipeline.py            # CustomerSegmenter: fit / predict / save / load
 │   └── visualization.py       # All report figures
 ├── tests/
+│   ├── conftest.py            # Keeps tests away from the real cloud database and AI provider
 │   ├── test_segmentation.py
-│   ├── test_agent.py          # Agent, accounts, per-user workspaces, AI routing
+│   ├── test_agent.py          # Agent, accounts, cloud-account import, uploads that rebuild the site, AI tool calls
 │   ├── test_knowledge_files.py# Knowledge base, file formats, reports, dataset workspaces
 │   └── test_web.py
 └── artifacts/                 # Generated: model, tables, model card, figures/
@@ -448,9 +468,9 @@ python run_pipeline.py predict --input new_customers.csv --output scored.csv
 python -m streamlit run app.py
 
 # Launch the production website + API (http://localhost:8000, API docs at /docs)
-.\run_website.ps1          # add -Dev for auto-reload
+.\run_website.ps1          # add -Dev for auto-reload, -Port 8010 for another port
 
-# Same, with general AI answers from a local Ollama model (install Ollama first)
+# Same, with general AI answers from a local Ollama model instead of Gemini (install Ollama first)
 ollama pull qwen3.5:4b
 .\run_website.ps1 -AiModel qwen3.5:4b
 
@@ -458,19 +478,26 @@ ollama pull qwen3.5:4b
 python -m pytest -q
 ```
 
-Open http://localhost:8000, create an account and go to **Data agent**. Attach a file and choose **Find segments (all columns)** to rebuild the whole site from it.
+`run_website.ps1` reads a local **`.env`** file (git-ignored) with one `KEY=value` per line, for example:
+
+```ini
+SEG_DATABASE_URL=postgresql://...   # cloud account database (Railway Postgres public URL); omit to use local SQLite
+GEMINI_API_KEY=...                  # free key from https://aistudio.google.com/apikey
+```
+
+Open http://localhost:8000, sign in (or create an account) and go to **Data agent**. Attach a file (for example `data/synthetic_customers_10000.csv`) and press **Send**: *Segment & apply* rebuilds the whole site from it.
 
 Open `notebooks/Customer_Segmentation.ipynb` and run all cells for the full narrative analysis.
 
 ## Deploying the website
 
-**Live on Railway:** https://web-production-2d2cf6.up.railway.app (config in `railway.toml`, builds the `Dockerfile`).
+**Live on Railway:** https://customeriq.up.railway.app (service `customeriq`, config in `railway.toml`, builds the `Dockerfile`). The project also runs a **Postgres** service; `customeriq` reads it through `DATABASE_URL=${{Postgres.DATABASE_URL}}`, and `GEMINI_API_KEY` is set as a Railway variable.
 
 ```powershell
-npm install -g @railway/cli     # once
-railway login                   # once, opens the browser
-railway up --service web --ci   # redeploy after any change
-railway logs --service web      # view live logs
+npm install -g @railway/cli           # once
+railway login                         # once, opens the browser
+railway up --service customeriq --ci  # redeploy after any change
+railway logs --service customeriq     # view live logs
 ```
 
 Or run the container anywhere with Docker:
@@ -491,47 +518,55 @@ Put the container behind a TLS-terminating reverse proxy (Nginx, Caddy, Azure Ap
 | `SEG_ENABLE_DOCS` | `true` | Serve OpenAPI docs at `/docs` |
 | `SEG_AUTO_TRAIN` | `true` (`false` in Docker) | Train on start-up if no model artifact exists |
 | `WEB_CONCURRENCY`, `FORWARDED_ALLOW_IPS` | `2`, `127.0.0.1` | Uvicorn workers; proxy IPs trusted for client addresses |
-| `SEG_MODEL_STORE_DIR` | `artifacts/store` | Accounts (`users.db`), chat history, drafts, published models, per-user workspaces and results. **Mount a volume here** in production |
+| `SEG_MODEL_STORE_DIR` | `artifacts/store` | Drafts, published models, per-user workspaces and results (and `users.db` when no cloud database is set). **Mount a volume here** in production |
+| `SEG_DATABASE_URL` / `DATABASE_URL` | *(empty)* | PostgreSQL URL for accounts and chat history. Empty = local SQLite `users.db`. Accounts in an existing `users.db` are imported once |
 | `SEG_MAX_TRAIN_ROWS`, `SEG_MIN_TRAIN_ROWS` | `20000`, `150` | Rows allowed for training / finding segments |
 | `SEG_TRAIN_LIMIT_PER_10MIN` | `6` | Training / segmenting runs per visitor |
 | `SEG_LOGIN_LIMIT_PER_10MIN` | `20` | Sign-in / sign-up attempts per IP |
-| `SEG_LLM_API_KEY` | *(empty)* | Key for an OpenAI-compatible AI provider (server side only, never sent to the browser) |
-| `SEG_LLM_BASE_URL` | `https://api.openai.com/v1` | Provider URL, e.g. `http://localhost:11434/v1` for Ollama (setting it enables AI even without a key) |
-| `SEG_LLM_MODEL` | `gpt-4o-mini` | Model name, e.g. `qwen3.5:4b` for Ollama |
-| `SEG_LLM_REASONING` | *(empty)* | Optional `reasoning_effort`; use `none` for local "thinking" models so they answer directly |
-| `SEG_LLM_TIMEOUT`, `SEG_LLM_LIMIT_PER_10MIN` | `45`, `40` | AI request timeout (seconds); AI questions per user per 10 minutes |
+| `SEG_LLM_PROVIDER` | `gemini` | `gemini`, `openai`, `groq` or `ollama`: sets the default URL and model below. Detected from the key if not set |
+| `GEMINI_API_KEY` / `SEG_LLM_API_KEY` | *(empty)* | Provider key (server side only, never sent to the browser). `OPENAI_API_KEY` / `GROQ_API_KEY` also work |
+| `SEG_LLM_BASE_URL` | provider default | e.g. `https://generativelanguage.googleapis.com/v1beta/openai`, or `http://localhost:11434/v1` for Ollama (setting it enables AI even without a key) |
+| `SEG_LLM_MODEL` | `gemini-3.8-flash` | Model name, e.g. `gpt-4o-mini` or `qwen3.5:4b` |
+| `SEG_LLM_FALLBACK_MODELS` | `gemini-3.7-flash,gemini-3.5-flash,gemini-flash-latest` | Tried in order when the main model is busy (503), rate-limited (429) or times out |
+| `SEG_LLM_REASONING` | `low` for Gemini | Optional `reasoning_effort`; use `none` for local "thinking" models so they answer directly |
+| `SEG_LLM_TIMEOUT`, `SEG_LLM_LIMIT_PER_10MIN` | `30`, `40` | AI request timeout per attempt (seconds); AI questions per user per 10 minutes |
 
-AI answers are **off** unless `SEG_LLM_API_KEY` or `SEG_LLM_BASE_URL` is set. Examples:
+AI answers are **off** unless a key or `SEG_LLM_BASE_URL` is set. Examples:
 
 ```powershell
+# Google Gemini (default provider; free key from https://aistudio.google.com/apikey)
+$env:GEMINI_API_KEY = "<your key>"
+
 # OpenAI (or any OpenAI-compatible provider)
-$env:SEG_LLM_API_KEY = "<your key>"; $env:SEG_LLM_MODEL = "gpt-4o-mini"
+$env:SEG_LLM_PROVIDER = "openai"; $env:OPENAI_API_KEY = "<your key>"
 
 # Local and free with Ollama (runs on your GPU)
 $env:SEG_LLM_BASE_URL = "http://localhost:11434/v1"; $env:SEG_LLM_MODEL = "qwen3.5:4b"; $env:SEG_LLM_REASONING = "none"
 ```
 
-Small local models need little memory: `qwen3.5:4b` (~3 GB) fits in an 8 GB laptop GPU, while `qwen3.5:9b` needs several GB of free system RAM as well.
+The Gemini **free tier** allows only a small number of requests and is often busy ("high demand"); enable billing on the key in Google AI Studio for dependable answers. Small local models need little memory: `qwen3.5:4b` (~3 GB) fits in an 8 GB laptop GPU, while `qwen3.5:9b` needs several GB of free system RAM as well.
 
 ### Data agent (`#/agent` page)
 
-A chat assistant with built-in, rule-based answers about the site and your data, plus optional general AI answers.
+A chat assistant with built-in, rule-based answers about the site and your data, plus Gemini AI answers that can act on your workspace.
 
 | Ask / do | What happens |
 |---|---|
-| Attach any file → **Find segments (all columns)** | Segments the file on every usable column and **makes it your workspace**: all pages switch to it. Excel report, labelled CSV and profile table to download |
+| Attach any file → **Send** (*Segment & apply*, the default) | Customer-format files train the customer model; any other table is segmented on all usable columns. Either way it **becomes your workspace** and every page switches to it. Excel report, labelled CSV and profile table to download |
+| "apply this file to the overview" · "segment my uploaded data" | Applies the file you uploaded most recently (kept for 24 hours) |
+| Attach any file → **Find segments (all columns)** | Segments the file on every usable column, even if it is in the customer format |
 | Attach a customer file → **Train customer model** | Trains the customer model on your file and applies it to your workspace (files in another format fall back to *Find segments*) |
 | Attach a file → **Assign segments** | Scores every row against your current workspace's segments; Excel report + CSV |
-| Attach a file → **Analyze** | Rows, columns, mapped column names, missing values, duplicates, compatibility |
+| Attach a file → **Analyze only** | Rows, columns, column types and ranges, mapped column names, missing values, duplicates, compatibility; pages stay unchanged |
 | "reset to original" | Returns your workspace to the demo customer model |
 | "why this number of segments?" · "which segment has the highest income?" · "compare all segments" | Exact answers from the live model |
 | "premium customers with income over 70k" · "give me the rows in <segment>" | Filtered extract (CSV) |
 | "download the segment report with charts" | Excel report of the current workspace |
 | "generate 1000 synthetic customers" · "upload template" · "download the channel mix table" | Synthetic data, blank template, summary tables (customer model only) |
-| Any other question, e.g. "explain K-Means simply" or "write a campaign email for my largest segment" | Answered by the AI model when configured, using your workspace as context |
+| Any other question, e.g. "explain K-Means simply", "what is the average income per segment?" or "turn my staff file into segments for the dashboard" | Answered by Gemini using your workspace and last upload as context; it can call `column_stats`, `apply_uploaded_file`, `reset_workspace` and `download_report` |
 | **History** button | Reopen / continue previous chats; *Data* tab re-downloads every dataset |
 
-Workspaces, drafts and results live in `SEG_MODEL_STORE_DIR`; drafts and scored files expire after 24 hours. On Railway this disk is temporary unless a volume is mounted there.
+Workspaces, drafts, the last upload and results live in `SEG_MODEL_STORE_DIR`; drafts, uploads and scored files expire after 24 hours. On Railway this folder is on the `web-volume` volume, so it survives redeploys.
 
 ### REST API (`/api/v1`)
 
@@ -547,9 +582,23 @@ Workspaces, drafts and results live in `SEG_MODEL_STORE_DIR`; drafts and scored 
 | POST | `/assign`, `/assign/generic` | Assign one customer (customer model) / one record (dataset workspace) |
 | POST | `/score/batch?format=csv\|xlsx` | Score an uploaded file; CSV or Excel report with charts |
 | GET | `/customers/export?segment=` | Download segmented rows |
-| POST | `/agent/message`, `/agent/file`, `/agent/train`, `/agent/publish`, `/agent/reset` | Data agent chat and file actions (training requires sign-in) |
+| POST | `/agent/message`, `/agent/file`, `/agent/train`, `/agent/publish`, `/agent/reset` | Data agent chat and file actions (`action=auto\|analyze\|score\|train\|cluster`; training requires sign-in) |
 | GET | `/agent/status` | Workspace, prompts and AI status |
 | POST | `/datasets` | Download a dataset or report (`filtered`, `synthetic`, `summary`, `template`, `result`, `report`) |
+
+## Version control
+
+The code is on GitHub: https://github.com/uditmehrotradkd-cpu/customer-iq (branch `main`, repository root = the folder that contains `Customer Segementation/`). Secrets (`.env`), account databases and `artifacts/` are git-ignored.
+
+```powershell
+cd D:\Code\customer_iq_public_showcase
+git add -A; git commit -m "describe the change"; git push   # save a new version
+git log --oneline                                            # list versions
+git revert <commit-id>; git push                             # undo one version safely
+git checkout <commit-id> -- <path>                           # restore one file from an older version
+```
+
+After reverting, redeploy with `railway up --service customeriq --ci` so the live site matches.
 
 ## Generated artifacts
 
@@ -566,8 +615,8 @@ Workspaces, drafts and results live in `SEG_MODEL_STORE_DIR`; drafts and scored 
 | `recommendations.json` | Personas, actions, KPIs, guardrails |
 | `model_card.json` | Model metadata, rationale, intended use |
 | `figures/*.png` | 13 presentation-ready charts |
-| `store/users.db` | Accounts (scrypt password hashes), sessions (hashed tokens), chat history |
-| `store/users/<id>/` | Each user's drafts, published workspace (customer model or `workspace.joblib` for an uploaded dataset) and downloadable results |
+| `store/users.db` | Local accounts when no cloud database is configured (scrypt password hashes, hashed session tokens, chat history); imported into PostgreSQL once when `SEG_DATABASE_URL` is set |
+| `store/users/<key>/` | Each user's drafts, published workspace (customer model or `workspace.joblib` for an uploaded dataset), last upload and downloadable results (`<key>` is derived from the username) |
 
 ## Key configuration (`segmentation/config.py`)
 
