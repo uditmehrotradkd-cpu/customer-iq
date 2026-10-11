@@ -72,19 +72,48 @@
 
 ## Slide 5: Cleaning Policy
 
-- **Duplicates:** exact duplicates, duplicate IDs and duplicate profiles removed (first record kept)
-- **Inconsistent records:** impossible ages, extreme income and spend without purchases removed
-- **Categories harmonised:** `Alone` → Single, `Absurd`/`YOLO` → Unknown; education grouped into Basic / Graduate / Postgraduate
+- **Duplicates:** exact duplicates, duplicate IDs and duplicate profiles removed (first record kept); rows with a missing ID get a new one
+- **Blank rows:** rows missing more than half of the required fields are dropped instead of being imputed into fake customers
+- **Numbers typed as text:** `$58,138`, `58,138.00`, `58138 USD` are converted; `N/A`, `unknown`, `?` and negative amounts are cleared for imputation
+- **Yes/No flags:** `Yes`, `TRUE`, `y` become 1/0; out-of-range values (2, 5, -1) are cleared
+- **Dates:** `21-08-2013`, `2013-08-21`, `21/08/2013`, `21 Aug 2013`, `August 21, 2013` are all understood; impossible (`31-02-2014`) and future dates are cleared
+- **Inconsistent records:** birth years before 1920 or customers younger than 16, extreme income and spend without purchases removed
+- **Categories harmonised:** case, spacing and synonyms fixed (` phd.` → PhD, `Masters`/`MBA` → Master, `married ` → Married, `Widowed` → Widow, `Alone` → Single, `Absurd`/`YOLO` → Unknown); education grouped into Basic / Graduate / Postgraduate
 - **Missing values:** income imputed with the median **for that education level**; other fields with the median
-- **Scoring safety:** the production pipeline also imputes, so a new customer with a missing field can still be scored
+- **Scoring safety:** the production pipeline applies the same parsing and imputation, so a new customer with a messy or missing field can still be scored
 
-**Visual:** flow diagram: Raw → De-duplicate → Validate → Harmonise → Impute → Clean
+**Visual:** flow diagram: Raw → Standardise → Drop blanks → De-duplicate → Harmonise → Validate → Impute → Clean
 
-**Speaker notes:** This extract had no missing cells left, but future data will, so imputation is built into the pipeline and not done as a one-off step.
+**Speaker notes:** This extract had no missing cells left, but real exports will, so every rule is built into the pipeline and not done as a one-off step. The data agent tells the user exactly what it cleaned before it trains.
 
 ---
 
-## Slide 6: Feature Engineering – Measuring Behaviour
+## Slide 6: Stress Test – 1 Lakh Uncleaned Customers
+
+- A deliberately messy export of **100,000 rows** (`tests/messy_data.py`) with every problem above planted on purpose
+- Uploaded as Excel to the data agent, which **cleaned it and trained on the clean rows in about 40 seconds**
+
+| Planted problem | Found and handled |
+|---|---|
+| Blank rows | 200 removed |
+| Exact duplicate rows | 3,000 removed |
+| Re-used customer IDs | 1,000 removed |
+| Re-registered profiles under a new ID | 995 removed |
+| Impossible birth years (1893, 2031 …) | 378 removed |
+| Data-entry incomes (9,999,999 …) | 188 removed |
+| Spend recorded with zero purchases | 284 removed |
+| Numbers and yes/no flags stored as text | 4,901 converted |
+| Inconsistent category spellings | 9,189 standardised |
+
+- **Result:** 100,000 rows in → **93,955 clean customers** → the same **4 segments** (silhouette 0.219)
+
+**Visual:** table above
+
+**Speaker notes:** Before this test the cleaner silently lost 16,000 dates in other formats, 3,000 incomes written as text and 4,700 misspelled categories, and turned blank rows into fake customers. Each gap became a new cleaning rule with an automated test.
+
+---
+
+## Slide 7: Feature Engineering – Measuring Behaviour
 
 | Feature | Meaning | Lens |
 |---|---|---|
@@ -106,7 +135,7 @@
 
 ---
 
-## Slide 7: Key Insights from Exploratory Analysis
+## Slide 8: Key Insights from Exploratory Analysis
 
 - **Wine (50%) and meat (28%)** account for most of the spend
 - **Spend is concentrated:** the top 20% of customers generate **52%** of revenue
@@ -121,7 +150,7 @@
 
 ---
 
-## Slide 8: Preprocessing – Why Each Transformation Matters
+## Slide 9: Preprocessing – Why Each Transformation Matters
 
 1. **Median imputation**: any future customer can be scored
 2. **Winsorising (1st–99th percentile)**: a few extreme spenders cannot drag the centroids
@@ -136,7 +165,7 @@
 
 ---
 
-## Slide 9: Choosing the Number of Segments
+## Slide 10: Choosing the Number of Segments
 
 - Evaluated **k = 2 … 10** with five criteria: elbow (inertia), silhouette, Calinski-Harabasz, Davies-Bouldin, bootstrap stability (ARI)
 - **Decision rule:** take the elbow k if it is actionable (k ≥ 3), no segment is below 5% of customers, stability ARI ≥ 0.80, and its silhouette is within 90% of the best eligible value
@@ -153,7 +182,7 @@
 
 ---
 
-## Slide 10: Algorithm Comparison
+## Slide 11: Algorithm Comparison
 
 | Algorithm | Silhouette | Davies-Bouldin | Smallest segment | Scores new customers |
 |---|---|---|---|---|
@@ -169,7 +198,7 @@
 
 ---
 
-## Slide 11: Four Customer Segments at a Glance
+## Slide 12: Four Customer Segments at a Glance
 
 | Segment | Customers | Revenue | Median income | Avg spend | Deal ratio | Campaigns accepted |
 |---|---|---|---|---|---|---|
@@ -186,7 +215,7 @@
 
 ---
 
-## Slide 12: Segment Fingerprints
+## Slide 13: Segment Fingerprints
 
 - Each cell shows how many standard deviations a segment sits above (red) or below (blue) the average customer
 - **Premium Campaign Responders:** campaigns +1.7 sd, spend +1.4 sd, income +1.1 sd
@@ -200,7 +229,7 @@
 
 ---
 
-## Slide 13: Channel and Product Preferences
+## Slide 14: Channel and Product Preferences
 
 | Segment | Web | Catalog | Store | Over-indexed categories |
 |---|---|---|---|---|
@@ -215,7 +244,7 @@
 
 ---
 
-## Slide 14: Segment 1 – Premium Campaign Responders (16% of customers, 39% of revenue)
+## Slide 15: Segment 1 – Premium Campaign Responders (16% of customers, 39% of revenue)
 
 - **Who:** high income, high spend, large baskets, respond to campaigns
 - **Goal:** retain and grow share of wallet
@@ -231,7 +260,7 @@
 
 ---
 
-## Slide 15: Segment 2 – Affluent Quiet Loyalists (24% of customers, 39% of revenue)
+## Slide 16: Segment 2 – Affluent Quiet Loyalists (24% of customers, 39% of revenue)
 
 - **Who:** affluent, frequent buyers who ignore promotional campaigns
 - **Goal:** protect value without over-marketing
@@ -245,7 +274,7 @@
 
 ---
 
-## Slide 16: Segment 3 – Digital Deal-Seekers (24% of customers, 19% of revenue)
+## Slide 17: Segment 3 – Digital Deal-Seekers (24% of customers, 19% of revenue)
 
 - **Who:** mid-income, web-first, browse often, buy heavily on promotion
 - **Goal:** convert browsing into full-price, larger-basket purchases (**main growth opportunity**)
@@ -259,7 +288,7 @@
 
 ---
 
-## Slide 17: Segment 4 – Budget-Conscious Browsers (36% of customers, 3.5% of revenue)
+## Slide 18: Segment 4 – Budget-Conscious Browsers (36% of customers, 3.5% of revenue)
 
 - **Who:** lower income, lowest spend, frequent visits, few purchases, mostly in-store
 - **Goal:** deliver everyday value and build habit at low cost to serve
@@ -273,7 +302,7 @@
 
 ---
 
-## Slide 18: Responsible AI and Fairness
+## Slide 19: Responsible AI and Fairness
 
 - **Behaviour-only clustering:** demographics are excluded when forming segments
 - **Proxy check (Cramér's V):** segment membership vs. demographics that were *not* used
@@ -296,17 +325,18 @@
 
 ---
 
-## Slide 19: Production Website (Bonus)
+## Slide 20: Production Website (Bonus)
 
 - **Sign-in:** every user creates an account and gets a **private workspace**; nothing one user uploads or trains changes what others see. Accounts live in a **cloud PostgreSQL database**, so the same login works on the live site and on localhost and survives redeploys
+- **My account:** profile and display name, password change (signs out other devices), workspace status with segment list, recent conversations, Excel report download, reset to demo and sign-out
 - **Overview:** KPIs, customer vs. revenue share, 3D skyline / galaxy, interactive PCA map, summary table
 - **Segment profiles:** metrics vs. average, defining traits, mix charts, radar, fingerprint heatmap, playbook, guardrail, CSV export
 - **Explorer:** filter segments, compare distributions and relationships of any feature, category mix, download lists
 - **Assign:** score one record (form adapts to the dataset's columns) or a whole file, downloadable as an **Excel report with charts**
 - **Model & methodology:** k-selection charts, algorithm comparison, cleaning / column audit, skewness, fairness check, model card
-- **Data agent:** chat assistant powered by **Google Gemini** that answers questions, analyses any uploaded CSV/Excel/JSON file, **rebuilds the whole site from your own dataset as soon as you send it**, produces datasets and Excel reports, keeps **chat history**, and can act for you (apply an uploaded file, reset, look up exact column statistics, hand out the report)
+- **Data agent:** chat assistant powered by **Google Gemini** that answers questions, analyses any uploaded CSV/Excel/JSON file (up to 100,000 rows), **cleans messy exports and reports what it fixed**, **rebuilds the whole site from your own dataset as soon as you send it**, produces datasets and Excel reports, keeps **chat history**, and can act for you (apply an uploaded file, reset, look up exact column statistics, hand out the report)
 - Built on a **versioned REST API** (FastAPI, `/api/v1`, OpenAPI docs at `/docs`) that other systems (CRM, marketing automation) can call
-- **Immersive tech design:** data-dashboard and neural-particle videos, neon persona photos, an animated "data network" backdrop, page transitions, glowing cards, neon **3D skyline and customer galaxy** (WebGL) in their own glass panel with a Skyline/Galaxy toolbar, light/dark theme and a **Calm** mode that switches animation off; all media self-hosted from Pexels (credits in the site footer)
+- **Premium boutique design:** ivory and ink surfaces with a champagne-gold accent, serif display type, announcement bar, centred wordmark with an underlined menu, square uppercase buttons, product-card style segment carousel, sepia-toned editorial imagery, gold **3D skyline and customer galaxy** (WebGL), jewel-tone segment colours, light/dark theme and a **Calm** mode that switches animation off; all media self-hosted from Pexels (credits in the site footer)
 
 **Visual:** screenshots of the website pages (run `.\run_website.ps1`, open http://localhost:8000)
 
@@ -314,7 +344,7 @@
 
 ---
 
-## Slide 20: Solution Architecture
+## Slide 21: Solution Architecture
 
 ```mermaid
 flowchart LR
@@ -342,11 +372,11 @@ flowchart LR
 - One reusable package (`segmentation/`) drives the notebook, CLI, API, website and dashboard
 - Production hardening: input validation, security headers (CSP, HSTS-ready), rate limiting (scoring, training, sign-in and AI questions), upload limits, CSV/Excel formula-injection protection, trusted hosts, cross-site request blocking, salted scrypt password hashes, HttpOnly session cookies, non-root Docker image with health check
 - Persisted artifacts: model (`segmenter.joblib`), CSV/JSON tables, model card, 13 figures; user accounts and chat history in PostgreSQL (SQLite fallback); per-user workspaces in `artifacts/store`
-- 71 automated tests (unit, integration, API, security, accounts, cloud-account import, dataset workspaces, AI routing and tool calls, dashboard smoke tests)
+- 72 automated tests (unit, integration, API, security, accounts, password change, cloud-account import, messy-data cleaning, dataset workspaces, AI routing and tool calls, dashboard smoke tests)
 
 ---
 
-## Slide 21: Conclusions and Next Steps
+## Slide 22: Conclusions and Next Steps
 
 - **Four stable, behaviour-based segments**, with k justified by the elbow, silhouette, Davies-Bouldin and stability
 - **Two premium segments generate 78% of revenue** but need *opposite* strategies
@@ -364,6 +394,15 @@ flowchart LR
 ## What's new
 
 ### Latest update
+
+| Area | Change |
+|---|---|
+| **Premium boutique redesign** | The site now looks like a luxury shopping site: ivory/ink palette with champagne gold, serif headings, black announcement bar, centred wordmark with the menu underneath, square uppercase buttons, segment carousel styled as product cards, sepia-toned photos and videos, warm gold 3D stage and a jewel-tone segment palette (website and Excel reports). The animated network backdrop was removed |
+| **My account page** | `#/account` (avatar menu → *My account*): change your display name, change your password (other devices are signed out), see your workspace (source, segments, trained date, AI status), recent conversations, download the Excel report, reset to demo, sign out. New endpoints `PUT /auth/me` and `POST /auth/me/password` |
+| **Agent cleans messy data** | Numbers typed as text (`$58,138`, `58138 USD`), yes/no flags (`Yes`, `TRUE`, `y`), mixed date formats, case/spacing/synonym variants of categories, blank rows, future dates, customers younger than 16 and missing IDs are now handled. The training reply starts with a summary of everything that was removed or fixed |
+| **1 lakh rows** | Training, segmenting and batch scoring accept up to **100,000 rows** and 12 MB; above 20,000 rows the number of segments is chosen on a random sample, so a 100k Excel file trains in under a minute. `data/synthetic_customers_100000.csv` is a clean 1 lakh dataset; `tests/messy_data.py` builds an uncleaned one |
+
+### Previous update
 
 | Area | Change |
 |---|---|
@@ -414,7 +453,7 @@ Customer Segementation/
 │   ├── security.py            # Security headers, rate limit, body-size guard
 │   ├── settings.py            # SEG_* environment configuration (AI provider presets)
 │   └── static/                # Single-page website (HTML/CSS/JS, vendored Chart.js / three.js, media;
-│                              #   backdrop.js = animated data-network background, effects.js = motion + Calm mode)
+│                              #   account-page.js = My account, effects.js = motion + Calm mode)
 ├── Dockerfile, docker-compose.yml, .dockerignore
 ├── run_website.ps1            # Start the website locally (loads settings from .env)
 ├── .env                       # Local secrets (database URL, Gemini key) - git-ignored, never committed
@@ -422,6 +461,7 @@ Customer Segementation/
 ├── app_pages/                 # Dashboard pages: overview, profiles, explorer, assign, diagnostics
 ├── dashboard_utils.py         # Cached model loading and chart helpers
 ├── run_pipeline.py            # CLI: train / predict
+├── make_deck.py               # Builds the Team Doomsday PowerPoint (python make_deck.py → Downloads/Doomsday_CustomerIQ.pptx)
 ├── requirements.txt           # Full dev environment (includes requirements-web.txt)
 ├── requirements-web.txt       # Minimal runtime for the website / Docker image
 ├── data/
@@ -447,6 +487,7 @@ Customer Segementation/
 │   └── visualization.py       # All report figures
 ├── tests/
 │   ├── conftest.py            # Keeps tests away from the real cloud database and AI provider
+│   ├── messy_data.py          # Builds uncleaned exports (duplicates, blanks, text numbers, typos, mixed dates)
 │   ├── test_segmentation.py
 │   ├── test_agent.py          # Agent, accounts, cloud-account import, uploads that rebuild the site, AI tool calls
 │   ├── test_knowledge_files.py# Knowledge base, file formats, reports, dataset workspaces
@@ -581,7 +622,8 @@ Workspaces, drafts, the last upload and results live in `SEG_MODEL_STORE_DIR`; d
 |---|---|---|
 | GET | `/health` | Liveness, model version, workspace mode (`customer` / `generic`) and labels |
 | POST | `/auth/register`, `/auth/login`, `/auth/logout` | Accounts and sessions (HttpOnly cookie) |
-| GET / PUT | `/auth/me`, `/auth/me/history` | Signed-in user; saved chat history |
+| GET / PUT | `/auth/me`, `/auth/me/history` | Signed-in user (PUT changes the display name); saved chat history |
+| POST | `/auth/me/password` | Change password (current password required; signs out other sessions) |
 | GET | `/overview`, `/pca`, `/pca3d`, `/segments`, `/segments/{id}`, `/fingerprint` | Segment summaries and profiles of *your* workspace |
 | GET | `/explorer/features`, `/explorer/distribution`, `/explorer/scatter`, `/explorer/demographics` | Exploration data |
 | GET | `/diagnostics` | k selection, algorithm comparison, cleaning / column audit, fairness, model card |
@@ -637,3 +679,6 @@ After reverting, redeploy with `railway up --service customeriq --ci` so the liv
 | `skew_threshold` | 0.75 | Apply log1p above this skewness |
 | `winsor_lower`, `winsor_upper` | 1%, 99% | Outlier capping |
 | `n_init`, `random_state` | 20, 42 | Reproducible K-Means |
+| `min_birth_year`, `min_customer_age` | 1920, 16 | Plausible age range; younger or future birth years are removed |
+| `max_income` | 200,000 | Data-entry income outliers are removed |
+| `max_missing_share` | 50% | Rows missing more required fields than this are blank lines, not customers |
