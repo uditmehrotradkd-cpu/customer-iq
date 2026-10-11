@@ -239,6 +239,19 @@ def test_accounts_sessions_and_history(service, tmp_path):
         assert client.post("/api/v1/auth/login", json={**creds, "username": "RAVI"}).status_code == 200
         assert client.post("/api/v1/auth/register", json={**creds, "username": "Ravi", "name": "Other"}).status_code == 409
 
+        # Profile and password changes; a password change signs out other sessions.
+        assert client.put("/api/v1/auth/me", json={"name": "  Ravi   Kumar "}).json()["name"] == "Ravi Kumar"
+        assert client.put("/api/v1/auth/me", json={"name": "<>"}).status_code == 422
+        other = TestClient(app)
+        assert other.post("/api/v1/auth/login", json=creds).status_code == 200
+        change = {"current_password": "wrong-password", "new_password": "battery-staple"}
+        assert client.post("/api/v1/auth/me/password", json=change).status_code == 400
+        assert client.post("/api/v1/auth/me/password", json={**change, "current_password": creds["password"]}).status_code == 200
+        assert other.get("/api/v1/auth/me").status_code == 401
+        assert client.get("/api/v1/auth/me").json()["name"] == "Ravi Kumar"
+        creds = {**creds, "password": "battery-staple"}
+        assert client.post("/api/v1/auth/login", json=creds).status_code == 200
+
     # Accounts and workspaces survive a restart (new app on the same store).
     with TestClient(create_app(settings, service=service)) as again:
         assert again.post("/api/v1/auth/login", json=creds).status_code == 200

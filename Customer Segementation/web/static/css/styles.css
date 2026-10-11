@@ -733,6 +733,32 @@ form legend { font-size: 1.1rem; }
 .auth-features strong { font-family: var(--serif); font-size: 1.15rem; font-weight: 400; }
 .auth-features span { color: #c9bfb1; }
 
+/* my account */
+.account-hero { flex-direction: row; align-items: center; justify-content: flex-start; gap: 20px; }
+.account-hero .eyebrow { margin-bottom: 10px; }
+.account-avatar { flex: none; width: 76px; height: 76px; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--gold); background: rgba(0, 0, 0, .25); color: var(--gold-light); font-family: var(--serif); font-size: 1.7rem; letter-spacing: .04em; }
+.account-form { display: flex; flex-direction: column; gap: 12px; margin-top: 8px; }
+.account-form input[readonly] { background: var(--bg); color: var(--muted); }
+.account-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 6px; }
+.form-status { margin: 0; font-size: .82rem; color: var(--muted); }
+.form-status.ok { color: var(--positive); }
+.form-status.bad { color: var(--negative); }
+.account-list { margin: 8px 0 16px; }
+.account-row { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.account-row dt { font-size: .62rem; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); padding-top: 3px; }
+.account-row dd { margin: 0; }
+.account-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.account-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid var(--line); font-size: .8rem; }
+.account-chats { list-style: none; margin: 8px 0 16px; padding: 0; }
+.account-chats li { border-bottom: 1px solid var(--line); }
+.account-chats a { display: flex; flex-direction: column; gap: 2px; padding: 12px 0; color: var(--ink); text-decoration: none; }
+.account-chats a:hover strong { color: var(--primary); }
+.account-chats strong { font-weight: 500; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.account-chats .muted { font-size: .76rem; }
+.account-lower, .account-signout { margin-top: var(--gap); }
+.account-signout { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.account-signout h2, .account-signout .caption { margin-bottom: 0; }
+
 @media (max-width: 639px) {
   .topbar { gap: 4px; }
   .brand { font-size: .95rem; letter-spacing: .18em; }

@@ -29,6 +29,7 @@ import { backgroundVideo, countUp, initMotionToggle, onCleanup, pageEnter, pageL
 import { BAGS_VIDEO, CREDITS, EXPLORER_IMAGE, HERO_VIDEO, METHOD_IMAGE, persona } from "./media.js";
 import { initThemeSwitch } from "./theme.js";
 import { renderAgent } from "./agent-page.js";
+import { renderAccount } from "./account-page.js";
 import { fetchMe, renderLogin, signOut } from "./login.js";
 
 const view = document.getElementById("view");
@@ -1022,6 +1023,29 @@ const routes = {
         onSignedOut: showLogin,
       }),
   },
+  account: {
+    title: "My account",
+    render: async (root, token) =>
+      renderAccount(root, {
+        user: state.user,
+        isCurrent: () => stillCurrent(token),
+        onUserUpdated: (user) => {
+          state.user = user;
+          renderUserMenu();
+        },
+        onModelChanged: () => {
+          state.segments = [];
+          state.explorer = null;
+          state.workspace = null;
+          api.clearCache();
+          showStatus();
+        },
+        onSignOut: async () => {
+          await signOut();
+          showLogin();
+        },
+      }),
+  },
 };
 
 async function navigate() {
@@ -1117,8 +1141,9 @@ function renderUserMenu() {
       { class: "user-panel" },
       h("strong", {}, user.name),
       h("span", { class: "muted" }, `@${user.username}`),
+      h("a", { class: "btn", href: "#/account" }, "My account"),
       h("a", { class: "btn secondary", href: "#/agent" }, "Upload my data"),
-      h("button", { class: "btn", type: "button", onclick: async () => {
+      h("button", { class: "btn secondary", type: "button", onclick: async () => {
         await signOut();
         showLogin();
       } }, "Sign out"),

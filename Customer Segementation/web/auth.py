@@ -254,6 +254,32 @@ class UserStore:
             self._sessions.pop(key, None)
             self._run(lambda db: db.execute("DELETE FROM sessions WHERE token_hash = ?", (key,)))
 
+    def update_name(self, user_id: int, name: str) -> dict:
+        clean = clean_display_name(name)
+        if not clean:
+            raise AuthError("Please enter a name.")
+        row = self._run(
+            lambda db: db.execute(
+                "UPDATE users SET display_name = ? WHERE id = ? RETURNING id, username, display_name, created_at", (clean, user_id)
+            ).fetchone()
+        )
+        self._sessions.clear()
+        return self._public(row)
+
+    def change_password(self, user_id: int, current: str, new: str, keep_token: str | None) -> None:
+        """Replace the password after checking the current one; signs out every other session."""
+        new_hash = hash_password(new)
+
+        def update(db):
+            row = db.execute("SELECT password_hash FROM users WHERE id = ?", (user_id,)).fetchone()
+            if row is None or not verify_password(current, row["password_hash"]):
+                raise AuthError("Your current password is incorrect.")
+            db.execute("UPDATE users SET password_hash = ? WHERE id = ?", (new_hash, user_id))
+            db.execute("DELETE FROM sessions WHERE user_id = ? AND token_hash <> ?", (user_id, _token_hash(keep_token or "")))
+
+        self._run(update)
+        self._sessions.clear()
+
     def get_history(self, user_id: int) -> list:
         row = self._run(lambda db: db.execute("SELECT history FROM users WHERE id = ?", (user_id,)).fetchone())
         try:
@@ -331,6 +357,19 @@ class HistoryBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     chats: list[dict] = Field(max_length=50)
+
+
+class ProfileUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=40)
+
+
+class PasswordChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
 
 
 def _store(request: Request) -> UserStore:
@@ -411,6 +450,23 @@ def logout(request: Request, response: Response) -> dict:
 @router.get("/me")
 def me(user: User) -> dict:
     return user
+
+
+@router.put("/me")
+def update_me(body: ProfileUpdate, user: User, request: Request) -> dict:
+    try:
+        return _store(request).update_name(user["id"], body.name)
+    except AuthError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
+
+
+@router.post("/me/password", dependencies=[Depends(_login_guard)])
+def change_password(body: PasswordChange, user: User, request: Request) -> dict:
+    try:
+        _store(request).change_password(user["id"], body.current_password, body.new_password, request.cookies.get(COOKIE_NAME))
+    except AuthError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from None
+    return {"ok": True}
 
 
 @router.get("/me/history")
