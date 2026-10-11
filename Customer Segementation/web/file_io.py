@@ -9,6 +9,7 @@ from pathlib import PurePath
 import pandas as pd
 
 from segmentation.config import CAMPAIGN_COLUMNS, DATE_COLUMN, ID_COLUMN, RAW_CATEGORICAL_COLUMNS, RAW_NUMERIC_COLUMNS
+from segmentation.data_loader import to_flag
 
 SUPPORTED_EXTENSIONS = (".csv", ".tsv", ".txt", ".xlsx", ".xlsm", ".xls", ".json", ".jsonl", ".ndjson")
 REQUIRED_COLUMNS = (*RAW_NUMERIC_COLUMNS, *RAW_CATEGORICAL_COLUMNS)
@@ -90,7 +91,7 @@ def normalize_columns(frame: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, str]
     out = frame.rename(columns=renames)
     for col in CAMPAIGN_COLUMNS:
         if col in out.columns and out[col].dtype == object:
-            out[col] = out[col].astype(str).str.strip().str.lower().map({"yes": 1, "true": 1, "1": 1, "no": 0, "false": 0, "0": 0})
+            out[col] = to_flag(out[col])
     return out, renames
 
 

@@ -74,8 +74,10 @@ def _cleaning_answer(s: SegmentationService) -> str:
     detail = "; ".join(f"{r.step}: {r.rows_removed}" for r in removed.itertuples())
     return (
         f"The raw file had {s.segmenter.n_raw_rows_:,} rows and {len(s.customers):,} remain after cleaning. Rows removed — {detail}. "
-        "Constant columns were dropped, categories harmonised (Alone→Single, Absurd/YOLO→Unknown), deal purchases capped at total "
-        "purchases and missing values imputed (income by education median)."
+        "Numbers stored as text ('$58,138', '58138 USD') and yes/no flags were converted, unreadable or negative values cleared, "
+        "blank rows, duplicates, impossible birth years and future dates removed, mixed date formats parsed, "
+        "constant columns dropped, category spellings harmonised (' phd.'→PhD, Masters→Master, Alone→Single, Absurd/YOLO→Unknown), "
+        "deal purchases capped at total purchases and missing values imputed (income by education median)."
     )
 
 

@@ -56,6 +56,36 @@ def test_cleaning_removes_duplicates_and_outliers(raw):
     assert report.to_frame()["rows_removed"].sum() == len(raw) - len(clean)
 
 
+def test_cleaning_handles_messy_exports(fitted):
+    from messy_data import make_messy_customers
+    from web.file_io import normalize_columns
+    from segmentation.data_loader import to_canonical_schema
+
+    base = pd.read_csv(ROOT / "data" / "synthetic_customers_10000.csv")
+    messy = make_messy_customers(base, n_total=5000, seed=3)
+    frame, _ = normalize_columns(messy)
+    raw = to_canonical_schema(frame)
+    assert raw["Dt_Customer"].notna().mean() > 0.97  # mixed date layouts are understood
+    clean, report = clean_customers(raw)
+    steps = report.to_frame().set_index("step")["rows_removed"]
+
+    assert steps["Drop blank or mostly empty rows"] == 10
+    assert steps["Drop exact duplicate rows"] == 150
+    assert steps["Drop duplicate customer IDs"] == 50
+    assert not clean["ID"].duplicated().any()
+    assert clean[["Income", "Dt_Customer", "Recency", "MntWines"]].notna().all().all()
+    assert clean[["AcceptedCmp1", "Response", "Complain"]].isin([0, 1]).all().all()
+    assert clean["Year_Birth"].between(1920, 1998).all()
+    assert clean["Income"].max() <= 200_000 and (clean[["MntWines", "Recency"]] >= 0).all().all()
+    assert (clean["Dt_Customer"] <= pd.Timestamp.now()).all()
+    assert (clean["Education_Level"] == "Unknown").mean() < 0.02
+    assert set(clean["Marital_Status"]) <= {"Married", "Together", "Single", "Divorced", "Widow", "Unknown"}
+    assert steps.sum() == len(raw) - len(clean)
+    # Scoring accepts the same messy values.
+    scored = fitted.predict(raw.dropna(subset=["Year_Birth"]).head(300))
+    assert scored["Segment"].notna().all()
+
+
 def test_feature_engineering_values():
     row = {
         "Year_Birth": 1980, "Income": 50_000, "Kidhome": 1, "Teenhome": 1, "Recency": 10,

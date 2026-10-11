@@ -124,6 +124,15 @@ def test_agent_api_end_to_end(service, tmp_path):
         assert trained.status_code == 200, trained.text
         body = trained.json()
         assert body["applied"] and body["draft"]["k"] == 3 and "mine.csv" in body["draft"]["source"]
+        assert body["reply"].startswith("I cleaned the data first")
+
+        # A messy export (duplicates, blanks, text numbers, misspellings) is cleaned before training.
+        from messy_data import make_messy_customers
+
+        messy = make_messy_customers(train_file, n_total=300, seed=5).to_csv(index=False).encode()
+        cleaned = client.post("/api/v1/agent/file", files={"file": ("messy.csv", messy, "text/csv")}, data={"action": "train", "k": "3"})
+        assert cleaned.status_code == 200, cleaned.text
+        assert "exact duplicate rows" in cleaned.json()["reply"] and cleaned.json()["draft"]["rows_clean"] < 300
 
         # The new model is live only in this user's workspace.
         assert client.get("/api/v1/health").json()["model_source"] == "published"

@@ -139,5 +139,9 @@ class SegmentationConfig:
     stability_runs: int = 10
     stability_sample_frac: float = 0.8
     min_birth_year: int = 1920
+    # Customers must be at least this old when the data was collected (rejects future / child birth years).
+    min_customer_age: int = 16
+    # Rows missing more than this share of the required fields are blank or junk lines, not customers.
+    max_missing_share: float = 0.5
     max_income: float = 200_000
     random_state: int = RANDOM_STATE

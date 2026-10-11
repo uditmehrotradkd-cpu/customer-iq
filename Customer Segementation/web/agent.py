@@ -190,6 +190,7 @@ def draft_summary(registry: ModelRegistry, draft_id: str) -> dict:
         **meta,
         "silhouette": round(service.segmenter.silhouette_, 4),
         "rationale": service.segmenter.k_selection_.rationale,
+        "cleaning": service.segmenter.cleaning_report_.steps,
         "segments": [
             {
                 "id": int(p["Segment"]),

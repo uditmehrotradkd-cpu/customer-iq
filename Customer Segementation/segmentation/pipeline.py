@@ -15,13 +15,14 @@ from sklearn.pipeline import Pipeline
 from .cleaning import clean_customers
 from .config import (
     ARTIFACTS_DIR,
+    CAMPAIGN_COLUMNS,
     CHANNEL_PURCHASE_COLUMNS,
     DATE_COLUMN,
-    DATE_FORMAT,
     MODEL_FILENAME,
     RAW_NUMERIC_COLUMNS,
     SegmentationConfig,
 )
+from .data_loader import parse_dates, to_flag, to_number
 from .features import FeatureEngineer, engineer_features
 from .model_selection import KSelectionResult, compare_algorithms, evaluate_k_range, silhouette
 from .preprocessing import build_preprocessor, skewness_report
@@ -96,14 +97,9 @@ class CustomerSegmenter:
         if DATE_COLUMN not in df.columns:
             df[DATE_COLUMN] = pd.NaT
         for col in RAW_NUMERIC_COLUMNS:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
+            df[col] = to_flag(df[col]) if col in (*CAMPAIGN_COLUMNS, "Complain") else to_number(df[col])
             df.loc[df[col] < 0, col] = np.nan
-        if not pd.api.types.is_datetime64_any_dtype(df[DATE_COLUMN]):
-            parsed = pd.to_datetime(df[DATE_COLUMN], format=DATE_FORMAT, errors="coerce")
-            fallback = parsed.isna() & df[DATE_COLUMN].notna()
-            if fallback.any():
-                parsed[fallback] = pd.to_datetime(df.loc[fallback, DATE_COLUMN].astype(str), format="ISO8601", errors="coerce")
-            df[DATE_COLUMN] = parsed
+        df[DATE_COLUMN] = parse_dates(df[DATE_COLUMN])
         purchases = df[list(CHANNEL_PURCHASE_COLUMNS)].sum(axis=1)
         df["NumDealsPurchases"] = np.minimum(df["NumDealsPurchases"], purchases)
         return df

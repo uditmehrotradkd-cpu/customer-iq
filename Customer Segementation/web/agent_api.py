@@ -181,6 +181,24 @@ async def _ask_ai(request: Request, registry: ModelRegistry, body: AgentMessage,
     return result
 
 
+def _cleaning_line(summary: dict) -> str:
+    """One-line audit of what was cleaned before training."""
+    steps = summary.get("cleaning", [])
+    removed = [f"{s['rows_removed']:,} {re.sub(r'^(Drop|Remove) ', '', s['step'])}" for s in steps if s["rows_removed"] > 0]
+    labels = {"Standardise numbers and yes/no flags": "numbers and yes/no flags stored as text", "Harmonise categories": "inconsistent category spellings"}
+    fixes = [
+        f"{int(m.group()):,} {labels[s['step']]}"
+        for s in steps
+        if s["step"] in labels and (m := re.match(r"\d+", s["detail"])) and int(m.group())
+    ]
+    line = f"I cleaned the data first: {summary['rows_raw']:,} rows in, {summary['rows_clean']:,} clean customers out."
+    if removed:
+        line += " Removed " + ", ".join(removed) + "."
+    if fixes:
+        line += " Fixed " + " and ".join(fixes) + "."
+    return line + " Remaining gaps were imputed (full audit on Model & methodology)."
+
+
 async def _train(registry: ModelRegistry, raw: pd.DataFrame, k: int | None, source: str, settings) -> dict:
     if len(raw) > settings.max_train_rows:
         raise HTTPException(status_code=413, detail=f"Training data is limited to {settings.max_train_rows:,} rows.")
@@ -199,6 +217,7 @@ async def _train(registry: ModelRegistry, raw: pd.DataFrame, k: int | None, sour
     names = ", ".join(f"{s['name']} ({s['customers_pct']:.0f}%)" for s in summary["segments"])
     return {
         "reply": (
+            f"{_cleaning_line(summary)}\n"
             f"Done! Your workspace now runs on a model trained on {source}: {summary['k']} segments from "
             f"{summary['rows_clean']:,} clean customers (silhouette {summary['silhouette']:.3f}; previous model {summary['live']['silhouette']:.3f}). "
             f"Segments: {names}.\nEvery page (Overview, Segment profiles, Explorer, Assign and Model & methodology) now shows your data. "
