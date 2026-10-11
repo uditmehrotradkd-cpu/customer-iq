@@ -18,6 +18,8 @@ from .config import SegmentationConfig
 
 # Silhouette and Ward are O(n^2); larger uploads are scored on a fixed random sample.
 LARGE_SAMPLE = 5000
+# Choosing k needs ~90 K-Means fits per candidate, so big datasets are scanned on a random sample.
+K_SCAN_SAMPLE = 20_000
 
 
 def silhouette(X: np.ndarray, labels: np.ndarray, random_state: int) -> float:
@@ -42,10 +44,9 @@ def find_elbow(k_values: np.ndarray, inertia: np.ndarray) -> int:
     return int(k_values[np.argmax(distance)])
 
 
-def _bootstrap_stability(X: np.ndarray, k: int, config: SegmentationConfig) -> float:
+def _bootstrap_stability(X: np.ndarray, reference: np.ndarray, k: int, config: SegmentationConfig) -> float:
     """Mean ARI between a full-data solution and solutions fit on random subsamples."""
     rng = np.random.default_rng(config.random_state)
-    reference = KMeans(k, n_init=config.n_init, random_state=config.random_state).fit_predict(X)
     scores = []
     for run in range(config.stability_runs):
         idx = rng.choice(len(X), size=int(len(X) * config.stability_sample_frac), replace=False)
@@ -73,6 +74,9 @@ def evaluate_k_range(X: pd.DataFrame | np.ndarray, config: SegmentationConfig | 
     """
     config = config or SegmentationConfig()
     X = np.asarray(X)
+    sampled = len(X) > K_SCAN_SAMPLE
+    if sampled:
+        X = X[np.random.default_rng(config.random_state).choice(len(X), K_SCAN_SAMPLE, replace=False)]
     rows = []
     for k in range(config.k_min, config.k_max + 1):
         model = KMeans(k, n_init=config.n_init, random_state=config.random_state).fit(X)
@@ -85,7 +89,7 @@ def evaluate_k_range(X: pd.DataFrame | np.ndarray, config: SegmentationConfig | 
                 "calinski_harabasz": calinski_harabasz_score(X, labels),
                 "davies_bouldin": davies_bouldin_score(X, labels),
                 "min_segment_share": np.bincount(labels).min() / len(labels),
-                "stability_ari": _bootstrap_stability(X, k, config),
+                "stability_ari": _bootstrap_stability(X, labels, k, config),
             }
         )
     metrics = pd.DataFrame(rows)
@@ -125,6 +129,8 @@ def evaluate_k_range(X: pd.DataFrame | np.ndarray, config: SegmentationConfig | 
         f"stability ARI={best['stability_ari']:.2f}, smallest segment={best['min_segment_share']:.1%}. "
         f"Raw silhouette peaks at k={best_silhouette_k}; best eligible composite is k={int(best_composite['k'])}."
     )
+    if sampled:
+        rationale += f" Candidate k values were scored on a random sample of {K_SCAN_SAMPLE:,} customers."
     metrics["recommended"] = metrics["k"] == recommended_k
     return KSelectionResult(metrics, elbow_k, best_silhouette_k, recommended_k, rationale)
 

@@ -59,7 +59,7 @@ export function mountUniverse(container, data, colorOf) {
   }
   const starGeometry = new THREE.BufferGeometry();
   starGeometry.setAttribute("position", new THREE.BufferAttribute(stars, 3));
-  stage.scene.add(new THREE.Points(starGeometry, new THREE.PointsMaterial({ size: 0.12, map: glow, color: 0xc7d2fe, transparent: true, opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending })));
+  stage.scene.add(new THREE.Points(starGeometry, new THREE.PointsMaterial({ size: 0.12, map: glow, color: 0xf3e3c3, transparent: true, opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending })));
 
   if (!reducedMotion) {
     onFrame((t) => {

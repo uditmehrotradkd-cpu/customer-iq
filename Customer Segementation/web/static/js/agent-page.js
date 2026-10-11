@@ -14,7 +14,7 @@ const AI_PROMPTS = [
   "What is customer lifetime value and how do I raise it?",
 ];
 const MAX_MESSAGE = 2000;
-const MAX_FILE_BYTES = 5 * 1024 * 1024;
+const MAX_FILE_BYTES = 12 * 1024 * 1024;
 const MAX_HISTORY_TURNS = 10;
 const ACCEPT = ".csv,.tsv,.txt,.xlsx,.xlsm,.xls,.json,.jsonl,.ndjson";
 const QUESTION_PROMPTS = [
@@ -229,9 +229,9 @@ export function renderAgent(root, { user, onModelChanged, onSignedOut }) {
     "form",
     { class: "composer" },
     h("div", { class: "composer-box" }, fileTray, h("div", { class: "composer-row" }, fileInput, attach, input, send)),
-    h("p", { class: "composer-hint" }, "Enter to send \u00b7 Shift+Enter for a new line \u00b7 CSV, Excel or JSON up to 5 MB"),
+    h("p", { class: "composer-hint" }, "Enter to send \u00b7 Shift+Enter for a new line \u00b7 CSV, Excel or JSON up to 12 MB"),
   );
-  const dropHint = h("div", { class: "drop-hint", "aria-hidden": "true" }, icon("file", 34), h("strong", {}, "Drop your file"), h("span", {}, "CSV, Excel or JSON \u00b7 up to 5 MB"));
+  const dropHint = h("div", { class: "drop-hint", "aria-hidden": "true" }, icon("file", 34), h("strong", {}, "Drop your file"), h("span", {}, "CSV, Excel or JSON \u00b7 up to 12 MB"));
   const chatTitle = h("div", { class: "chat-title" }, h("strong", {}, "Data agent"), h("span", { class: "muted" }, "Online"));
   const historyCount = h("span", { class: "count-badge" });
   const historySearch = h("input", { type: "search", class: "history-search", placeholder: "Search chats and data", "aria-label": "Search history", maxlength: "80" });
@@ -742,7 +742,7 @@ export function renderAgent(root, { user, onModelChanged, onSignedOut }) {
   }
 
   function sendFile(file, action, k = null) {
-    if (file.size > MAX_FILE_BYTES) return addAgent({ reply: "That file is larger than 5 MB.", error: true });
+    if (file.size > MAX_FILE_BYTES) return addAgent({ reply: "That file is larger than 12 MB.", error: true });
     lastFile = file;
     const withK = (action === "train" || action === "cluster" || action === "auto") && k;
     const label = `${ACTION[action].verb} ${file.name}${withK ? ` with ${k} segments` : ""}`;

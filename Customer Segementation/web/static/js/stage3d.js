@@ -27,6 +27,8 @@ export function createStage(container, { label, fov = 45, cameraPosition = [0, 0
     return null;
   }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  // Error checks force a synchronous wait on every shader compile.
+  renderer.debug.checkShaderErrors = false;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   if (shadows) {
     renderer.shadowMap.enabled = true;

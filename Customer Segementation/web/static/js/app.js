@@ -25,8 +25,7 @@ import {
   scatterChart,
   withAlpha,
 } from "./charts.js";
-import { backgroundVideo, countUp, initMotionToggle, onCleanup, pageTransition, reducedMotion, reveal, runCleanups, tilt } from "./effects.js";
-import { startBackdrop } from "./backdrop.js";
+import { backgroundVideo, countUp, initMotionToggle, onCleanup, pageEnter, pageLeave, pageSettle, reducedMotion, reveal, runCleanups, tilt } from "./effects.js";
 import { BAGS_VIDEO, CREDITS, EXPLORER_IMAGE, HERO_VIDEO, METHOD_IMAGE, persona } from "./media.js";
 import { initThemeSwitch } from "./theme.js";
 import { renderAgent } from "./agent-page.js";
@@ -58,7 +57,7 @@ const SPEND_FIELDS = ["MntWines", "MntFruits", "MntMeatProducts", "MntFishProduc
 const CAMPAIGNS = ["AcceptedCmp1", "AcceptedCmp2", "AcceptedCmp3", "AcceptedCmp4", "AcceptedCmp5", "Response"];
 const EDUCATION = [["Basic", "Basic"], ["Graduation", "Graduation"], ["2n Cycle", "2nd cycle"], ["Master", "Master"], ["PhD", "PhD"]];
 const MARITAL = ["Married", "Together", "Single", "Divorced", "Widow", "Unknown"];
-const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+const MAX_UPLOAD_BYTES = 12 * 1024 * 1024;
 
 // ---------------------------------------------------------------- helpers
 const segmentById = (id) => state.segments.find((s) => s.id === id);
@@ -151,6 +150,7 @@ function coverflow(profiles, recs, stats) {
       const abs = Math.abs(offset);
       slide.style.transform = `translateX(calc(-50% + ${offset * spread}%)) translateZ(${-abs * 220}px) rotateY(${-offset * 42}deg)`;
       slide.style.opacity = abs > 1.5 ? "0" : String(1 - abs * 0.35);
+      slide.style.pointerEvents = abs > 1.5 ? "none" : "";
       slide.style.zIndex = String(10 - abs);
       slide.classList.toggle("active", offset === 0);
       slide.setAttribute("aria-hidden", String(offset !== 0));
@@ -199,10 +199,37 @@ function coverflow(profiles, recs, stats) {
   root.addEventListener("pointerenter", stop);
   root.addEventListener("focusin", stop);
 
+  // Resting the mouse on a side card brings it to the front.
+  let hoverTimer = null;
+  let pointer = { x: 0, y: 0 };
+  let anchor = null;
+  const cancelHover = () => {
+    clearTimeout(hoverTimer);
+    hoverTimer = null;
+  };
+  if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+    root.addEventListener("pointermove", (e) => (pointer = { x: e.clientX, y: e.clientY }));
+    slides.forEach((s, i) => {
+      s.addEventListener("pointermove", (e) => {
+        if (i === index || hoverTimer) return;
+        // Cards slide under a still cursor; only a real mouse move may trigger the next switch.
+        if (anchor && Math.hypot(e.clientX - anchor.x, e.clientY - anchor.y) < 8) return;
+        hoverTimer = setTimeout(() => {
+          hoverTimer = null;
+          anchor = { ...pointer };
+          stop();
+          go(i);
+        }, 220);
+      });
+      s.addEventListener("pointerleave", cancelHover);
+    });
+  }
+
   const resize = new ResizeObserver(layout);
   resize.observe(root);
   onCleanup(() => {
     stop();
+    cancelHover();
     resize.disconnect();
   });
   requestAnimationFrame(() => {
@@ -218,7 +245,7 @@ function shareBar(value) {
 
 function heatColor(value) {
   const alpha = Math.min(Math.abs(value) / 2, 1) * 0.85;
-  return value >= 0 ? `rgba(231, 111, 81, ${alpha})` : `rgba(69, 123, 157, ${alpha})`;
+  return value >= 0 ? `rgba(176, 128, 72, ${alpha})` : `rgba(84, 104, 128, ${alpha})`;
 }
 
 async function downloadFrom(path, filename, button) {
@@ -305,7 +332,7 @@ async function renderOverview(root, token) {
   root.replaceChildren(
     hero,
     h("div", { class: "kpis" }, overview.kpi_list.map((item) => animatedKpi(item.label, item.value, (v) => formatValue(item.format === "integer" ? Math.round(v) : v, item.format)))),
-    h("div", { class: "section-title" }, h("h2", {}, "Meet the segments"), h("p", {}, "Swipe or use the arrows to browse each segment.")),
+    h("div", { class: "section-title" }, h("h2", {}, "Meet the segments"), h("p", {}, "Hover a card, swipe or use the arrows to browse each segment.")),
     coverflow(profiles, recs, overview.slide_stats),
     h("div", { class: "section-title" }, h("h2", {}, valueName || !generic ? "Where the value is" : "How big each segment is"), h("p", {}, valueName ? `Share of ${w.entity} versus share of ${valueName}, and the 2D segment map.` : "Segment sizes and the 2D segment map.")),
     h(
@@ -332,8 +359,8 @@ async function renderOverview(root, token) {
   barChart(sizes.canvas, {
     labels: profiles.map((p) => p.Segment_Name),
     datasets: [
-      { label: entityLabel, data: profiles.map((p) => p["Customer_Share_%"]), backgroundColor: "#8da0cb", borderRadius: 6 },
-      ...(valueName || !generic ? [{ label: `${w.value ?? "Revenue"} %`, data: profiles.map((p) => p["Revenue_Share_%"]), backgroundColor: "#e76f51", borderRadius: 6 }] : []),
+      { label: entityLabel, data: profiles.map((p) => p["Customer_Share_%"]), backgroundColor: "#cbbfae", borderRadius: 2 },
+      ...(valueName || !generic ? [{ label: `${w.value ?? "Revenue"} %`, data: profiles.map((p) => p["Revenue_Share_%"]), backgroundColor: "#b08d57", borderRadius: 2 }] : []),
     ],
     horizontal: true,
     tickFormat: (v) => `${v}%`,
@@ -350,26 +377,31 @@ async function renderOverview(root, token) {
     tooltip: (ctx) => `${nameOf(ctx.raw.segment)} · ID ${ctx.raw.id}${ctx.raw.info ? ` · ${ctx.raw.info}` : ""}`,
   });
 
-  // Three.js is only downloaded for the overview page.
-  try {
-    const [{ mountTowers }, { mountUniverse }] = await Promise.all([import("./towers.js"), import("./universe.js")]);
+  // WebGL setup blocks the main thread, so mount the 3D view after the page has animated in.
+  const mount3d = async () => {
     if (!stillCurrent(token)) return;
-    let dispose = () => {};
-    const show = (key) => {
-      dispose();
-      views.forEach((v, i) => switchButtons[i].setAttribute("aria-pressed", String(v.key === key)));
-      hint.textContent = views.find((v) => v.key === key).hint;
-      dispose =
-        key === "skyline"
-          ? mountTowers(canvasHost, profiles, colorOf, (segment) => (location.hash = `#/segments/${segment}`))
-          : mountUniverse(canvasHost, universe, colorOf);
-    };
-    views.forEach((v, i) => switchButtons[i].addEventListener("click", () => show(v.key)));
-    onCleanup(() => dispose());
-    show("skyline");
-  } catch {
-    canvasHost.classList.add("no-webgl");
-  }
+    try {
+      const [{ mountTowers }, { mountUniverse }] = await Promise.all([import("./towers.js"), import("./universe.js")]);
+      if (!stillCurrent(token)) return;
+      let dispose = () => {};
+      const show = (key) => {
+        dispose();
+        views.forEach((v, i) => switchButtons[i].setAttribute("aria-pressed", String(v.key === key)));
+        hint.textContent = views.find((v) => v.key === key).hint;
+        dispose =
+          key === "skyline"
+            ? mountTowers(canvasHost, profiles, colorOf, (segment) => (location.hash = `#/segments/${segment}`))
+            : mountUniverse(canvasHost, universe, colorOf);
+      };
+      views.forEach((v, i) => switchButtons[i].addEventListener("click", () => show(v.key)));
+      onCleanup(() => dispose());
+      show("skyline");
+    } catch {
+      canvasHost.classList.add("no-webgl");
+    }
+  };
+  const mountTimer = setTimeout(mount3d, reducedMotion ? 0 : 450);
+  onCleanup(() => clearTimeout(mountTimer));
 }
 
 // ---------------------------------------------------------------- segment profiles
@@ -804,7 +836,7 @@ function batchCard() {
   const score = async (format, btn) => {
     const file = fileInput.files[0];
     if (!file) return (status.textContent = "Choose a file first.");
-    if (file.size > MAX_UPLOAD_BYTES) return (status.textContent = "File is larger than 5 MB.");
+    if (file.size > MAX_UPLOAD_BYTES) return (status.textContent = "File is larger than 12 MB.");
     btn.disabled = true;
     status.textContent = format === "xlsx" ? "Scoring and building your report…" : "Scoring…";
     try {
@@ -822,8 +854,8 @@ function batchCard() {
   return card(
     "Batch scoring",
     h("p", { class: "caption" }, isGeneric()
-      ? `Upload a CSV, Excel or JSON file with the same columns as ${words().dataset} (max 5 MB) to assign every row to a segment. Missing columns are filled with typical values.`
-      : "Upload a CSV, Excel (.xlsx/.xls) or JSON file in the raw or one-hot-encoded training schema (max 5 MB) to assign segments in bulk. The report opens in Excel with charts, segment profiles, next steps and every scored row."),
+      ? `Upload a CSV, Excel or JSON file with the same columns as ${words().dataset} (max 12 MB) to assign every row to a segment. Missing columns are filled with typical values.`
+      : "Upload a CSV, Excel (.xlsx/.xls) or JSON file in the raw or one-hot-encoded training schema (max 12 MB) to assign segments in bulk. The report opens in Excel with charts, segment profiles, next steps and every scored row."),
     h("div", { class: "controls" }, fileInput, button, csvButton),
     status,
   );
@@ -1006,24 +1038,36 @@ async function navigate() {
   document.title = `${routes[key].title} · Customer Segmentation`;
 
   const token = ++renderToken;
+  const shared = state.segments.length && state.workspace ? null : Promise.all([api.get("/segments"), api.get("/health")]);
+  shared?.catch(() => {});
+  await pageLeave(view);
+  if (!stillCurrent(token)) return;
   runCleanups();
   destroyCharts();
+  // Hold the height while the next page loads so the footer doesn't jump up.
+  view.style.minHeight = `${Math.min(view.offsetHeight, window.innerHeight)}px`;
   view.replaceChildren(loading());
-  window.scrollTo({ top: 0 });
+  pageSettle();
+  window.scrollTo({ top: 0, behavior: "instant" });
   try {
-    if (!state.segments.length || !state.workspace) {
-      [state.segments, state.workspace] = await Promise.all([api.get("/segments"), api.get("/health")]);
+    if (shared) {
+      [state.segments, state.workspace] = await shared;
       document.querySelector('[data-route="assign"]').textContent = isGeneric() ? "Assign a record" : "Assign a customer";
     }
     document.title = `${key === "assign" && isGeneric() ? "Assign a record" : routes[key].title} · Customer Segmentation`;
     await routes[key].render(view, token, param);
     if (stillCurrent(token)) {
-      pageTransition(view);
+      view.style.minHeight = "";
+      pageEnter(view);
       view.querySelectorAll(".kpi").forEach((el) => tilt(el, { max: 6, scale: 1.01 }));
       reveal(view);
     }
   } catch (err) {
-    if (stillCurrent(token)) view.replaceChildren(errorBox(`Could not load this page: ${err.message}`));
+    if (stillCurrent(token)) {
+      view.style.minHeight = "";
+      view.replaceChildren(errorBox(`Could not load this page: ${err.message}`));
+      pageEnter(view);
+    }
   }
 }
 
@@ -1090,6 +1134,9 @@ document.addEventListener("click", (e) => {
 });
 
 function showLogin() {
+  renderToken++;
+  pageSettle();
+  view.style.minHeight = "";
   state.user = null;
   resetSession();
   renderUserMenu();
@@ -1126,6 +1173,5 @@ window.addEventListener("hashchange", () => {
 });
 initThemeSwitch(applyChartTheme);
 initMotionToggle();
-startBackdrop();
 boot();
 renderCredits();

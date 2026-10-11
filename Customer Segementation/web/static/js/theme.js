@@ -36,7 +36,7 @@ export function initThemeSwitch(onChange) {
     root.setAttribute("data-theme", resolved);
     root.setAttribute("data-theme-pref", pref);
     buttons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.themeChoice === pref)));
-    if (meta) meta.setAttribute("content", resolved === "dark" ? "#111827" : "#ffffff");
+    if (meta) meta.setAttribute("content", resolved === "dark" ? "#0f0e0c" : "#faf8f4");
     if (changed) onChange?.(resolved);
   };
 

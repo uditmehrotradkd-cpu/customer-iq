@@ -18,7 +18,7 @@ from segmentation.config import CHANNEL_PURCHASE_COLUMNS, SPEND_COLUMNS
 from .services import CSV_FORMULA_PREFIXES
 
 # Same palette as the website's segment colours.
-PALETTE = ["2A9D8F", "E76F51", "6C63FF", "E9C46A", "8AB17D", "F4A261", "264653", "B56576", "457B9D", "9C6644"]
+PALETTE = ["2F7A64", "A0573A", "46608F", "C19A4B", "9B3B4A", "8A9A5B", "7D5F8C", "C48E6E", "4F7C8A", "8A735C"]
 HEADER_FILL = PatternFill("solid", fgColor="312E81")
 HEADER_FONT = Font(bold=True, color="FFFFFF")
 TITLE_FONT = Font(bold=True, size=18, color="312E81")

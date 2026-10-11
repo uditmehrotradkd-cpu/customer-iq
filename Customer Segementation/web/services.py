@@ -26,7 +26,7 @@ log = logging.getLogger(__name__)
 
 CSV_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
 AGE_BAND_ORDER = ["<35", "35-44", "45-54", "55-64", "65+"]
-SEGMENT_COLORS = ["#2a9d8f", "#e76f51", "#6c63ff", "#e9c46a", "#8ab17d", "#f4a261", "#264653", "#b56576", "#457b9d", "#9c6644"]
+SEGMENT_COLORS = ["#2f7a64", "#a0573a", "#46608f", "#c19a4b", "#9b3b4a", "#8a9a5b", "#7d5f8c", "#c48e6e", "#4f7c8a", "#8a735c"]
 
 
 def _records(df: pd.DataFrame) -> list[dict]:

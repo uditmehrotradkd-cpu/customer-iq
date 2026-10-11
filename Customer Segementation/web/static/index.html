@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Behavioural customer segmentation: explore a 3D customer universe, segment personas, recommendations and real-time customer assignment.">
-  <meta name="theme-color" content="#ffffff">
+  <meta name="theme-color" content="#faf8f4">
   <title>Customer Segmentation</title>
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
   <script src="/static/js/theme-init.js"></script>
@@ -14,13 +14,16 @@
   <script type="module" src="/static/js/app.js"></script>
 </head>
 <body>
-  <canvas id="fx-bg" aria-hidden="true"></canvas>
   <a class="skip-link" href="#main">Skip to content</a>
+  <div class="announce" role="note">
+    <span>Behaviour-only segmentation</span><span class="announce-sep" aria-hidden="true">&middot;</span><span>Private workspace for every account</span>
+  </div>
   <header class="topbar">
     <a class="brand" href="#/overview">
       <img src="/static/favicon.svg" alt="" width="28" height="28">
       <span>Customer<strong>IQ</strong></span>
     </a>
+    <div class="topbar-tools">
     <div class="theme-switch" role="group" aria-label="Colour theme">
       <button type="button" data-theme-choice="light" aria-pressed="false" title="Light theme">
         <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2v2.5M12 19.5V22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2 12h2.5M19.5 12H22M4.2 19.8 6 18M18 6l1.8-1.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -39,6 +42,7 @@
       <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M3 12c3-6 6 6 9 0s6 6 9 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       <span class="label">Calm</span>
     </button>
+    </div>
     <div id="user-menu" class="user-menu hidden"></div>
     <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav" id="nav-toggle" aria-label="Menu"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
     <nav id="nav" class="nav" aria-label="Main">

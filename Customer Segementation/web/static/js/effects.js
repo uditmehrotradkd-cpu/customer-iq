@@ -20,11 +20,30 @@ export function initMotionToggle() {
   });
 }
 
-export function pageTransition(el) {
-  if (reducedMotion) return;
-  el.classList.remove("page-enter");
-  void el.offsetWidth; // restart the CSS animation
-  el.classList.add("page-enter");
+let exit = null;
+
+// Fades the current page out; resolves when it is hidden (immediately if there is nothing to hide).
+export function pageLeave(el) {
+  if (reducedMotion || !el.animate || !el.firstElementChild || el.querySelector(":scope > .loading")) return Promise.resolve();
+  exit ??= el.animate(
+    [{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateY(-8px)" }],
+    { duration: 200, easing: "cubic-bezier(.4, 0, 1, 1)", fill: "forwards" },
+  );
+  return exit.finished.then(() => {}, () => {});
+}
+
+export function pageSettle() {
+  exit?.cancel();
+  exit = null;
+}
+
+export function pageEnter(el) {
+  pageSettle();
+  if (reducedMotion || !el.animate) return;
+  el.animate(
+    [{ opacity: 0, transform: "translateY(14px)" }, { opacity: 1, transform: "none" }],
+    { duration: 380, easing: "cubic-bezier(.22, 1, .36, 1)" },
+  );
 }
 
 export function onCleanup(fn) {
@@ -81,7 +100,7 @@ export function reveal(root) {
   );
   items.forEach((el, i) => {
     el.classList.add("reveal-item");
-    el.style.transitionDelay = `${Math.min(i % 6, 5) * 70}ms`;
+    el.style.transitionDelay = `${Math.min(i % 6, 5) * 55}ms`;
     observer.observe(el);
   });
 }

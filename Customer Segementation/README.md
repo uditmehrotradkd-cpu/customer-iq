@@ -375,7 +375,7 @@ flowchart LR
 | **Overview redesign** | The 3D view now sits in its own dark glass panel (the hero video no longer shows through it) with the **Skyline / Galaxy** switch and hint in a toolbar above the scene, so nothing overlaps the towers. Text on the left, 3D on the right on desktop; dimmer video, pill-style tags and segment legend, gradient headline, "Pause video" button |
 | **Skyline** | Towers stand on a ring and the stage **rotates a full 360°** (drag to turn it yourself, tap a tower to open its profile). Tall and short towers alternate so neighbouring labels sit at different heights and stay readable; labels are always drawn on top |
 | **Reliability** | The cloud-database connection now uses TCP keepalives, a 15-second statement timeout and reconnects after 4 minutes idle, so a silently dropped connection can no longer stall page loads |
-| **Training data** | `data/synthetic_customers_10000.csv`: 10,000 privacy-safe synthetic customers in the upload format (92% land in their intended segment); `..._labels.csv` holds the intended segment for comparison |
+| **Training data** | `data/synthetic_customers_10000.csv`: 10,000 privacy-safe synthetic customers in the upload format (92% land in their intended segment); `..._labels.csv` holds the intended segment for comparison. `data/synthetic_customers_50000.csv` is a 50,000-row version (4.6 MB, 91.8% fidelity; a model trained on it recovers the same 4 segments, ARI 0.81) |
 | **Version control** | Code is on GitHub (see *Version control* below) so any change can be reverted |
 
 ### Earlier updates
@@ -427,7 +427,11 @@ Customer Segementation/
 ├── data/
 │   ├── Customer_Segmentation_Cleaned_Encoded-1.csv
 │   ├── synthetic_customers_10000.csv         # 10k synthetic customers for training
-│   └── synthetic_customers_10000_labels.csv  # Intended segment per synthetic customer
+│   ├── synthetic_customers_10000_labels.csv  # Intended segment per synthetic customer
+│   ├── synthetic_customers_50000.csv         # 50k synthetic customers for training
+│   ├── synthetic_customers_50000_labels.csv  # Intended segment per synthetic customer
+│   ├── synthetic_customers_100000.csv        # 100k (1 lakh) synthetic customers for training
+│   └── synthetic_customers_100000_labels.csv # Intended segment per synthetic customer
 ├── notebooks/
 │   └── Customer_Segmentation.ipynb   # 20-section end-to-end analysis
 ├── segmentation/              # Production package
@@ -517,13 +521,13 @@ Put the container behind a TLS-terminating reverse proxy (Nginx, Caddy, Azure Ap
 | `SEG_ENABLE_HSTS` | `false` | Set `true` once the site is served over HTTPS |
 | `SEG_CORS_ORIGINS` | *(empty)* | Only needed if another web origin calls the API |
 | `SEG_RATE_LIMIT_PER_MINUTE` | `60` | Scoring requests per client IP per minute (per worker) |
-| `SEG_MAX_UPLOAD_MB`, `SEG_MAX_BATCH_ROWS` | `5`, `50000` | Batch-scoring limits |
+| `SEG_MAX_UPLOAD_MB`, `SEG_MAX_BATCH_ROWS` | `12`, `100000` | Batch-scoring limits |
 | `SEG_ENABLE_DOCS` | `true` | Serve OpenAPI docs at `/docs` |
 | `SEG_AUTO_TRAIN` | `true` (`false` in Docker) | Train on start-up if no model artifact exists |
 | `WEB_CONCURRENCY`, `FORWARDED_ALLOW_IPS` | `2`, `127.0.0.1` | Uvicorn workers; proxy IPs trusted for client addresses |
 | `SEG_MODEL_STORE_DIR` | `artifacts/store` | Drafts, published models, per-user workspaces and results (and `users.db` when no cloud database is set). **Mount a volume here** in production |
 | `SEG_DATABASE_URL` / `DATABASE_URL` | *(empty)* | PostgreSQL URL for accounts and chat history. Empty = local SQLite `users.db`. Accounts in an existing `users.db` are imported once |
-| `SEG_MAX_TRAIN_ROWS`, `SEG_MIN_TRAIN_ROWS` | `20000`, `150` | Rows allowed for training / finding segments |
+| `SEG_MAX_TRAIN_ROWS`, `SEG_MIN_TRAIN_ROWS` | `100000`, `150` | Rows allowed for training / finding segments (k is chosen on a 20,000-row sample above that) |
 | `SEG_TRAIN_LIMIT_PER_10MIN` | `6` | Training / segmenting runs per visitor |
 | `SEG_LOGIN_LIMIT_PER_10MIN` | `20` | Sign-in / sign-up attempts per IP |
 | `SEG_LLM_PROVIDER` | `gemini` | `gemini`, `openai`, `groq` or `ollama`: sets the default URL and model below. Detected from the key if not set |

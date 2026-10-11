@@ -8,19 +8,19 @@ function labelTexture(title, value) {
   canvas.width = 512;
   canvas.height = 168;
   const ctx = canvas.getContext("2d");
-  ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
-  ctx.strokeStyle = "rgba(148, 163, 184, 0.35)";
+  ctx.fillStyle = "rgba(20, 18, 16, 0.85)";
+  ctx.strokeStyle = "rgba(212, 180, 131, 0.45)";
   ctx.lineWidth = 3;
   ctx.beginPath();
-  if (ctx.roundRect) ctx.roundRect(4, 4, 504, 160, 28);
+  if (ctx.roundRect) ctx.roundRect(4, 4, 504, 160, 4);
   else ctx.rect(4, 4, 504, 160);
   ctx.fill();
   ctx.stroke();
   ctx.fillStyle = "#ffffff";
-  ctx.font = "700 66px Segoe UI, system-ui, sans-serif";
+  ctx.font = "400 70px 'Bodoni MT', Didot, Georgia, serif";
   ctx.textAlign = "center";
   ctx.fillText(value, 256, 84);
-  ctx.fillStyle = "#cbd5e1";
+  ctx.fillStyle = "#d9cfc0";
   ctx.font = "600 40px Segoe UI, system-ui, sans-serif";
   ctx.fillText(title, 256, 138, 488);
   const texture = new THREE.CanvasTexture(canvas);
@@ -40,32 +40,32 @@ export function mountTowers(container, profiles, colorOf, onSelect) {
   state.spin = reducedMotion ? 0 : 0.0035;
   state.tiltLimit = 0.25;
 
-  scene.add(new THREE.HemisphereLight(0xdbeafe, 0x0f172a, 1.1));
+  scene.add(new THREE.HemisphereLight(0xf3e9d8, 0x14110e, 1.1));
   const sun = new THREE.DirectionalLight(0xffffff, 2.2);
   sun.position.set(5, 10, 6);
   sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024);
   Object.assign(sun.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8 });
   scene.add(sun);
-  const rim = new THREE.PointLight(0xa5b4fc, 30, 30);
+  const rim = new THREE.PointLight(0xd9bf91, 30, 30);
   rim.position.set(-6, 4, -5);
   scene.add(rim);
 
   const floor = new THREE.Mesh(
     new THREE.CylinderGeometry(6, 6.3, 0.35, 96),
-    new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.55, metalness: 0.2 }),
+    new THREE.MeshStandardMaterial({ color: 0x24201b, roughness: 0.45, metalness: 0.35 }),
   );
   floor.position.y = -0.18;
   floor.receiveShadow = true;
   pivot.add(floor);
   const ring = new THREE.Mesh(
     new THREE.TorusGeometry(6.05, 0.03, 12, 160),
-    new THREE.MeshBasicMaterial({ color: 0xa5b4fc, transparent: true, opacity: 0.6 }),
+    new THREE.MeshBasicMaterial({ color: 0xd4b483, transparent: true, opacity: 0.7 }),
   );
   ring.rotation.x = Math.PI / 2;
   ring.position.y = 0.01;
   pivot.add(ring);
-  const grid = new THREE.PolarGridHelper(5.9, 12, 6, 96, 0x22d3ee, 0x6366f1);
+  const grid = new THREE.PolarGridHelper(5.9, 12, 6, 96, 0xd4b483, 0x8a6a3b);
   grid.position.y = 0.012;
   grid.material.transparent = true;
   grid.material.opacity = 0.35;
@@ -85,7 +85,7 @@ export function mountTowers(container, profiles, colorOf, onSelect) {
   const glow = glowTexture();
   stage.disposables.push(glow);
   if (dustCount) {
-    pivot.add(new THREE.Points(dustGeometry, new THREE.PointsMaterial({ size: 0.09, map: glow, color: 0x67e8f9, transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending })));
+    pivot.add(new THREE.Points(dustGeometry, new THREE.PointsMaterial({ size: 0.09, map: glow, color: 0xf3e3c3, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending })));
   }
   const towers = [];
   // Towers stand on a ring and the stage turns a full circle; alternating tall and short towers

@@ -8,7 +8,7 @@ services:
       # Comma-separated hostnames the site is served on (keep localhost for the health check).
       SEG_ALLOWED_HOSTS: "localhost,127.0.0.1"
       SEG_RATE_LIMIT_PER_MINUTE: "60"
-      SEG_MAX_UPLOAD_MB: "5"
+      SEG_MAX_UPLOAD_MB: "12"
       SEG_ENABLE_DOCS: "true"
       SEG_LOG_LEVEL: "INFO"
       WEB_CONCURRENCY: "2"
